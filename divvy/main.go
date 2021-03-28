@@ -6,7 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/plell/divvygo/divvy/handlers/user"
+	"github.com/plell/divvygo/divvy/routes"
 	// "gorm.io/driver/mysql"
 	// "gorm.io/gorm"
 )
@@ -20,12 +20,7 @@ func main() {
 	e.Use(middleware.Recover())
 
 	// Routes
-	e.GET("/", user.Okokok)
-	e.GET("/user", user.Hello)
-	// e.POST("/users", createUser)
-	// e.GET("/users/:id", getUser)
-	// e.PUT("/users/:id", updateUser)
-	// e.DELETE("/users/:id", deleteUser)
+	routes.MakeRoutes(e)
 
 	// db connection with gorm
 	// refer https://github.com/go-sql-driver/mysql#dsn-data-source-name for details

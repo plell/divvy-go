@@ -1,4 +1,4 @@
-package user
+package userHandler
 
 import (
 	"net/http"
@@ -11,5 +11,5 @@ func Hello(c echo.Context) error {
 }
 
 func Okokok(c echo.Context) error {
-	return c.String(http.StatusOK, "user here!")
+	return c.String(http.StatusOK, "nonono here!")
 }
