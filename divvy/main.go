@@ -1,0 +1,37 @@
+package main
+
+import (
+
+	//   "strconv"
+
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"github.com/plell/divvygo/divvy/handlers/user"
+	// "gorm.io/driver/mysql"
+	// "gorm.io/gorm"
+)
+
+func main() {
+	// Echo instance
+	e := echo.New()
+
+	// Middleware
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
+	// Routes
+	e.GET("/", user.Okokok)
+	e.GET("/user", user.Hello)
+	// e.POST("/users", createUser)
+	// e.GET("/users/:id", getUser)
+	// e.PUT("/users/:id", updateUser)
+	// e.DELETE("/users/:id", deleteUser)
+
+	// db connection with gorm
+	// refer https://github.com/go-sql-driver/mysql#dsn-data-source-name for details
+	// dsn := "user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
+	// db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+
+	// Start server
+	e.Logger.Fatal(e.Start(":1323"))
+}
