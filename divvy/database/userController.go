@@ -36,6 +36,12 @@ type UserCreator struct {
 	Feature9    uint   `json:"feature9"`
 }
 
+type CreateResponse struct {
+	Token  string `json:"token"`
+	User   User   `json:"user"`
+	Avatar []uint `json:"avatar"`
+}
+
 func CreateUser(c echo.Context) error {
 	req := UserCreator{}
 	defer c.Request().Body.Close()
@@ -74,13 +80,13 @@ func CreateUser(c echo.Context) error {
 		Feature8: req.Feature8,
 		Feature9: req.Feature9}
 
-	DB.Create(&avatar) // pass pointer of data to Create
+	result = DB.Create(&avatar) // pass pointer of data to Create
 
-	// user.ID             // returns inserted data's primary key
-	// result.Error        // returns error
-	// result.RowsAffected // returns inserted records count
+	if result.Error != nil {
+		return abstractError(c)
+	}
 
-	return c.JSON(http.StatusOK, json.NewEncoder(c.Response()).Encode(user))
+	return c.String(http.StatusOK, "Success!")
 }
 
 func GetUser(c echo.Context) error {

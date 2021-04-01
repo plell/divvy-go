@@ -17,6 +17,12 @@ type Credentials struct {
 	Password string `json:"password"`
 }
 
+type LoginResponse struct {
+	Token  string  `json:"token"`
+	User   db.User `json:"user"`
+	Avatar []uint  `json:"avatar"`
+}
+
 // Most of the code is taken from the echo guide
 // https://echo.labstack.com/cookbook/jwt
 func Login(c echo.Context) error {
@@ -39,9 +45,6 @@ func Login(c echo.Context) error {
 		return echo.ErrUnauthorized
 	}
 
-	log.Println(user.Password)
-	log.Println(creds.Password)
-
 	// Check if password is correct
 	if comparePasswords(user.Password, creds.Password) == false {
 		return echo.ErrUnauthorized
@@ -62,19 +65,32 @@ func Login(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, map[string]string{
-		"token": t,
-	})
 
-}
+	// Check in your db if the user exists or not
+	avatar := db.Avatar{}
 
-// Most of the code is taken from the echo guide
-// https://echo.labstack.com/cookbook/jwt
-func Private(c echo.Context) error {
-	user := c.Get("user").(*jwt.Token)
-	claims := user.Claims.(jwt.MapClaims)
-	name := claims["name"].(string)
-	return c.String(http.StatusOK, "Welcome "+name+"!")
+	result = db.DB.Where("user_id = ?", user.ID).First(&avatar)
+	if result.Error != nil {
+		return echo.ErrUnauthorized
+	}
+
+	avatarFeatures := []uint{avatar.Feature1,
+		avatar.Feature2,
+		avatar.Feature3,
+		avatar.Feature4,
+		avatar.Feature5,
+		avatar.Feature6,
+		avatar.Feature7,
+		avatar.Feature8,
+		avatar.Feature9}
+
+	response := LoginResponse{
+		Token:  t,
+		User:   user,
+		Avatar: avatarFeatures}
+
+	return c.JSON(http.StatusOK, response)
+
 }
 
 func comparePasswords(hashedPwd string, plainPwd string) bool {
