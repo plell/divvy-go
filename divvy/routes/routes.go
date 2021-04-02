@@ -10,7 +10,8 @@ import (
 func MakeRoutes(e *echo.Echo) {
 	// tokenless routes
 	e.POST("/login", auth.Login)
-	e.POST("/createUser", db.CreateUser)
+	e.POST("/user", db.CreateUser)
+	e.PATCH("/avatar", db.UpdateAvatar)
 
 	// token required (auth.IsLoggedIn middleware)
 	e.GET("/ping", misc.Pong, auth.IsLoggedIn)

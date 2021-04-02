@@ -42,6 +42,10 @@ type CreateResponse struct {
 	Avatar []uint `json:"avatar"`
 }
 
+type AvatarResponse struct {
+	Avatar []uint `json:"avatar"`
+}
+
 func CreateUser(c echo.Context) error {
 	req := UserCreator{}
 	defer c.Request().Body.Close()
@@ -61,7 +65,6 @@ func CreateUser(c echo.Context) error {
 		DisplayName: req.DisplayName,
 	}
 
-	// result := DB.db.Create(&user) // pass pointer of data to Create
 	result := DB.Create(&user) // pass pointer of data to Create
 
 	if result.Error != nil {
@@ -92,9 +95,6 @@ func CreateUser(c echo.Context) error {
 func GetUser(c echo.Context) error {
 	id := c.Param("userId")
 
-	log.Println("id")
-	log.Println(id)
-
 	user := User{}
 
 	result := DB.First(&user, id)
@@ -104,6 +104,48 @@ func GetUser(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, json.NewEncoder(c.Response()).Encode(user))
+}
+
+func UpdateAvatar(c echo.Context) error {
+	req := Avatar{}
+	defer c.Request().Body.Close()
+	err := json.NewDecoder(c.Request().Body).Decode(&req)
+
+	if err != nil {
+		return abstractError(c)
+	}
+
+	avatar := Avatar{}
+	// get avatar by user id
+	result := DB.Where("user_id = ?", req.UserId).First(&avatar)
+	if result.Error != nil {
+		return abstractError(c)
+	}
+	// update
+	result = DB.Model(&avatar).Updates(req)
+	if result.Error != nil {
+		return abstractError(c)
+	}
+	// get updated avatar
+	result = DB.First(&avatar)
+	if result.Error != nil {
+		return abstractError(c)
+	}
+
+	avatarFeatures := []uint{avatar.Feature1,
+		avatar.Feature2,
+		avatar.Feature3,
+		avatar.Feature4,
+		avatar.Feature5,
+		avatar.Feature6,
+		avatar.Feature7,
+		avatar.Feature8,
+		avatar.Feature9}
+
+	response := AvatarResponse{
+		Avatar: avatarFeatures}
+
+	return c.JSON(http.StatusOK, response)
 }
 
 // func DeleteUser(c echo.Context) error {
