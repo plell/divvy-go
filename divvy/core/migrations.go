@@ -3,11 +3,13 @@ package core
 func MigrateUp() {
 	DB.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(
 		&User{},
-		&Collaborator{},
-		&Group{},
-		&Payment{},
 		&Avatar{},
-		&StripeAccount{})
+		&StripeAccount{},
+		&Collaborator{},
+		&Collab{},
+		&Selector{},
+		&Payment{},
+	)
 }
 
 // type Migrator interface {

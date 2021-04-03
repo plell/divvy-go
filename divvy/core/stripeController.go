@@ -91,8 +91,9 @@ func CreateStripeAccount(c echo.Context) error {
 
 		// create account in db
 		stripeAccount := StripeAccount{
-			AcctId: acct.ID,
-			UserId: 1,
+			AcctId:   acct.ID,
+			UserId:   1,
+			Selector: MakeSelector(STRIPE_ACCOUT_TABLE),
 		}
 
 		result := DB.Create(&stripeAccount) // pass pointer of data to Create

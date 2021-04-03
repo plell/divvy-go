@@ -49,6 +49,7 @@ func CreateUser(c echo.Context) error {
 		Username:    req.Username,
 		Password:    hashedPassword,
 		DisplayName: req.DisplayName,
+		Selector:    MakeSelector(USER_TABLE),
 	}
 
 	result := DB.Create(&user) // pass pointer of data to Create
@@ -67,7 +68,9 @@ func CreateUser(c echo.Context) error {
 		Feature6: req.Feature6,
 		Feature7: req.Feature7,
 		Feature8: req.Feature8,
-		Feature9: req.Feature9}
+		Feature9: req.Feature9,
+		Selector: MakeSelector(AVATAR_TABLE),
+	}
 
 	result = DB.Create(&avatar) // pass pointer of data to Create
 
@@ -79,7 +82,6 @@ func CreateUser(c echo.Context) error {
 }
 
 func GetUser(c echo.Context) error {
-	// get user_id from jwt
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
 		return AbstractError(c)
@@ -97,17 +99,7 @@ func GetUser(c echo.Context) error {
 }
 
 func GetAvatar(c echo.Context) error {
-	// get user_id from jwt
 	user_id, err := GetUserIdFromToken(c)
-	if err != nil {
-		return AbstractError(c)
-	}
-
-	// decode request
-	req := Avatar{}
-	defer c.Request().Body.Close()
-	err = json.NewDecoder(c.Request().Body).Decode(&req)
-
 	if err != nil {
 		return AbstractError(c)
 	}
@@ -136,19 +128,10 @@ func GetAvatar(c echo.Context) error {
 }
 
 func UpdateAvatar(c echo.Context) error {
-	// get user_id from jwt
-	log.Println("*******************")
-	log.Println("try to get token")
-	log.Println("*******************")
-	// get user_id from jwt
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
 		return AbstractError(c)
 	}
-
-	log.Println("*******************")
-	log.Println(user_id)
-	log.Println("*******************")
 
 	// decode request avatar details
 	req := Avatar{}
