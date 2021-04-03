@@ -1,4 +1,4 @@
-package database
+package core
 
 func MigrateUp() {
 	DB.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(

@@ -1,20 +1,20 @@
-package database
+package core
 
 import (
-	//"fmt"
 
+	//   "strconv"
 	"fmt"
-
-	//"reflect"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	// "gorm.io/driver/mysql"
+	// "gorm.io/gorm"
 )
 
 // DB obj
 var DB *gorm.DB
 
-func Connect() {
+func ConnectDB() {
 	// db connection with gorm
 	// refer https://github.com/go-sql-driver/mysql#dsn-data-source-name for details
 	// [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]

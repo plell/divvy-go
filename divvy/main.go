@@ -9,16 +9,13 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	DB "github.com/plell/divvygo/divvy/database"
-	routes "github.com/plell/divvygo/divvy/routes"
+	core "github.com/plell/divvygo/divvy/core"
 	// "gorm.io/driver/mysql"
 	// "gorm.io/gorm"
 )
 
-// var mySigningKey = os.Get("MY_JWT_TOKEN") // get this from env
-var mySigningKey = []byte("mysecretphrase")
-
 func main() {
+
 	// Echo instance
 	e := echo.New()
 
@@ -35,11 +32,11 @@ func main() {
 	e.Use(middleware.CORS())
 
 	// Make Routes
-	routes.MakeRoutes(e)
+	core.MakeRoutes(e)
 	// DB connect
-	DB.Connect()
+	core.ConnectDB()
 	// DB Automigrate
-	DB.MigrateUp()
+	core.MigrateUp()
 
 	// Start server
 	e.Logger.Fatal(e.Start(":8000"))

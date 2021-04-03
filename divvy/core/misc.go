@@ -1,4 +1,4 @@
-package misc
+package core
 
 import (
 	"net/http"
@@ -8,4 +8,8 @@ import (
 
 func Pong(c echo.Context) error {
 	return c.String(http.StatusOK, "Pong")
+}
+
+func AbstractError(c echo.Context) error {
+	return c.String(http.StatusInternalServerError, "")
 }

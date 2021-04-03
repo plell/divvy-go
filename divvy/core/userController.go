@@ -1,4 +1,4 @@
-package database
+package core
 
 import (
 	"encoding/json"
@@ -8,18 +8,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 )
-
-func parseRequestJSON(c echo.Context) (User, error) {
-	decodedJson := User{}
-	defer c.Request().Body.Close()
-	err := json.NewDecoder(c.Request().Body).Decode(&decodedJson)
-	if err != nil {
-		log.Println("uuuuuuuu, $s", err)
-		return decodedJson, c.String(http.StatusInternalServerError, "")
-	}
-
-	return decodedJson, nil
-}
 
 type UserCreator struct {
 	DisplayName string `json:"displayName"`
@@ -52,12 +40,10 @@ func CreateUser(c echo.Context) error {
 	err := json.NewDecoder(c.Request().Body).Decode(&req)
 
 	if err != nil {
-		return abstractError(c)
+		return AbstractError(c)
 	}
 
 	hashedPassword := hashAndSalt(req.Password)
-
-	log.Println(hashedPassword)
 
 	user := User{
 		Username:    req.Username,
@@ -68,7 +54,7 @@ func CreateUser(c echo.Context) error {
 	result := DB.Create(&user) // pass pointer of data to Create
 
 	if result.Error != nil {
-		return abstractError(c)
+		return AbstractError(c)
 	}
 
 	avatar := Avatar{
@@ -86,40 +72,51 @@ func CreateUser(c echo.Context) error {
 	result = DB.Create(&avatar) // pass pointer of data to Create
 
 	if result.Error != nil {
-		return abstractError(c)
+		return AbstractError(c)
 	}
 
 	return c.String(http.StatusOK, "Success!")
 }
 
 func GetUser(c echo.Context) error {
-	id := c.Param("userId")
+	// get user_id from jwt
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c)
+	}
 
 	user := User{}
 
-	result := DB.First(&user, id)
+	result := DB.First(&user, user_id)
 
 	if result.Error != nil {
-		return abstractError(c)
+		return AbstractError(c)
 	}
 
 	return c.JSON(http.StatusOK, json.NewEncoder(c.Response()).Encode(user))
 }
 
 func GetAvatar(c echo.Context) error {
-	req := Avatar{}
-	defer c.Request().Body.Close()
-	err := json.NewDecoder(c.Request().Body).Decode(&req)
-
+	// get user_id from jwt
+	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
-		return abstractError(c)
+		return AbstractError(c)
 	}
 
+	// decode request
+	req := Avatar{}
+	defer c.Request().Body.Close()
+	err = json.NewDecoder(c.Request().Body).Decode(&req)
+
+	if err != nil {
+		return AbstractError(c)
+	}
+
+	// find avatar
 	avatar := Avatar{}
-	// get avatar by user id
-	result := DB.Where("user_id = ?", req.UserId).First(&avatar)
+	result := DB.Where("user_id = ?", user_id).First(&avatar)
 	if result.Error != nil {
-		return abstractError(c)
+		return AbstractError(c)
 	}
 
 	avatarFeatures := []uint{avatar.Feature1,
@@ -139,29 +136,44 @@ func GetAvatar(c echo.Context) error {
 }
 
 func UpdateAvatar(c echo.Context) error {
+	// get user_id from jwt
+	log.Println("*******************")
+	log.Println("try to get token")
+	log.Println("*******************")
+	// get user_id from jwt
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c)
+	}
+
+	log.Println("*******************")
+	log.Println(user_id)
+	log.Println("*******************")
+
+	// decode request avatar details
 	req := Avatar{}
 	defer c.Request().Body.Close()
-	err := json.NewDecoder(c.Request().Body).Decode(&req)
+	err = json.NewDecoder(c.Request().Body).Decode(&req)
 
 	if err != nil {
-		return abstractError(c)
+		return AbstractError(c)
 	}
 
 	avatar := Avatar{}
 	// get avatar by user id
-	result := DB.Where("user_id = ?", req.UserId).First(&avatar)
+	result := DB.Where("user_id = ?", user_id).First(&avatar)
 	if result.Error != nil {
-		return abstractError(c)
+		return AbstractError(c)
 	}
 	// update
 	result = DB.Model(&avatar).Updates(req)
 	if result.Error != nil {
-		return abstractError(c)
+		return AbstractError(c)
 	}
 	// get updated avatar
 	result = DB.First(&avatar)
 	if result.Error != nil {
-		return abstractError(c)
+		return AbstractError(c)
 	}
 
 	avatarFeatures := []uint{avatar.Feature1,

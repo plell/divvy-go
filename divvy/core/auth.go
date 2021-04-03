@@ -1,14 +1,14 @@
-package auth
+package core
 
 import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
-	db "github.com/plell/divvygo/divvy/database"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -18,14 +18,34 @@ type Credentials struct {
 }
 
 type LoginResponse struct {
-	Token  string  `json:"token"`
-	User   db.User `json:"user"`
-	Avatar []uint  `json:"avatar"`
+	Token  string `json:"token"`
+	User   User   `json:"user"`
+	Avatar []uint `json:"avatar"`
+}
+
+type jwtUserClaims struct {
+	User
+	jwt.StandardClaims
+}
+
+type jwtCustomClaims struct {
+	UserId uint `json:"UserId"`
+	// UUID  string `json:"uuid"`
+	// Admin bool   `json:"admin"`
+	jwt.StandardClaims
+}
+
+var tester = os.Getenv("TESTER")
+
+func GetSigningKey() []byte {
+	mySigningKey := []byte(os.Getenv("JWT_TOKEN"))
+	return mySigningKey
 }
 
 // Most of the code is taken from the echo guide
 // https://echo.labstack.com/cookbook/jwt
 func Login(c echo.Context) error {
+	mySigningKey := GetSigningKey()
 
 	// bind json to the login variable
 	creds := Credentials{}
@@ -36,10 +56,10 @@ func Login(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "")
 	}
 
-	user := db.User{}
+	user := User{}
 
 	// Check in your db if the user exists or not
-	result := db.DB.Where("username = ?", creds.Username).First(&user)
+	result := DB.Where("username = ?", creds.Username).First(&user)
 
 	if result.Error != nil {
 		return echo.ErrUnauthorized
@@ -50,15 +70,34 @@ func Login(c echo.Context) error {
 		return echo.ErrUnauthorized
 	}
 
+	// claims := &jwtUserClaims{
+	// 	user,
+	// 	jwt.StandardClaims{
+	// 		ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
+	// 	},
+	// }
+
+	claims := &jwtCustomClaims{
+		UserId: user.ID,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
 	// Create token
-	token := jwt.New(jwt.SigningMethodHS256)
+	// token := jwt.New(jwt.SigningMethodHS256)
+	// claims := token.Claims.(jwt.MapClaims)
+	// claims["user"] = user.ID
+	// claims["admin"] = true
+	// claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
+
+	// token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	// Set claims
 	// This is the information which frontend can use
 	// The backend can also decode the token and get admin etc.
-	claims := token.Claims.(jwt.MapClaims)
-	claims["name"] = "David Plell"
-	claims["admin"] = true
-	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
+
 	// Generate encoded token and send it as response.
 	// The signing string should be secret (a generated UUID          works too)
 	t, err := token.SignedString(mySigningKey)
@@ -67,9 +106,9 @@ func Login(c echo.Context) error {
 	}
 
 	// Check in your db if the user exists or not
-	avatar := db.Avatar{}
+	avatar := Avatar{}
 
-	result = db.DB.Where("user_id = ?", user.ID).First(&avatar)
+	result = DB.Where("user_id = ?", user.ID).First(&avatar)
 	if result.Error != nil {
 		return echo.ErrUnauthorized
 	}
@@ -107,4 +146,16 @@ func comparePasswords(hashedPwd string, plainPwd string) bool {
 	}
 
 	return true
+}
+
+func GetUserIdFromToken(c echo.Context) (uint, error) {
+	user := c.Get("user").(*jwt.Token)
+	claims := user.Claims.(*jwtCustomClaims)
+	log.Println(claims, "claims")
+	user_id := claims.UserId
+
+	log.Println("GOT USER ID ")
+	log.Println(user_id)
+
+	return user_id, nil
 }

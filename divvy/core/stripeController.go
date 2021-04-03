@@ -1,4 +1,4 @@
-package database
+package core
 
 import (
 	"encoding/json"
@@ -25,16 +25,25 @@ import (
 
 // payouts for all accounts should happen daily
 
-func GetStripeAccount(c echo.Context) error {
+func getStripeKey() string {
 	stripeKey := os.Getenv("STRIPE_API_KEY")
-	stripe.Key = stripeKey
+	return stripeKey
+}
+
+func GetStripeAccount(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c)
+	}
 
 	stripeAccount := StripeAccount{}
-	result := DB.Where("user_id = ?", 1).First(&stripeAccount)
+	result := DB.Where("user_id = ?", user_id).First(&stripeAccount)
 
 	if result.Error != nil {
-		return abstractError(c)
+		return c.String(http.StatusInternalServerError, "You haven't linked a payment account")
 	}
+
+	stripe.Key = getStripeKey()
 
 	acct, err := account.GetByID(
 		stripeAccount.AcctId,
@@ -42,15 +51,14 @@ func GetStripeAccount(c echo.Context) error {
 	)
 
 	if err != nil {
-		return abstractError(c)
+		return AbstractError(c)
 	}
 
 	return c.JSON(http.StatusOK, acct)
 }
 
 func CreateStripeAccount(c echo.Context) error {
-	stripeKey := os.Getenv("STRIPE_API_KEY")
-	stripe.Key = stripeKey
+	stripe.Key = getStripeKey()
 
 	decodedJson := User{}
 	defer c.Request().Body.Close()
@@ -90,7 +98,7 @@ func CreateStripeAccount(c echo.Context) error {
 		result := DB.Create(&stripeAccount) // pass pointer of data to Create
 
 		if result.Error != nil {
-			return abstractError(c)
+			return AbstractError(c)
 		}
 	} else {
 		// *******************
@@ -307,8 +315,8 @@ func CreateStripeAccount(c echo.Context) error {
 
 	linkParams := &stripe.AccountLinkParams{
 		Account:    stripe.String(accountId),
-		FailureURL: stripe.String("https://imdivvy.com/reauth"),
-		SuccessURL: stripe.String("https://imdivvy.com/return"),
+		FailureURL: stripe.String("https://www.linkedin.com/in/davidplell/stripesuccess"),
+		SuccessURL: stripe.String("https://www.linkedin.com/in/davidplell/striperetry"),
 		Type:       stripe.String("account_onboarding"), // "account_update" is only available with custom (pay per account, no thanks)
 	}
 
