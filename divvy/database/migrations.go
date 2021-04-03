@@ -7,7 +7,7 @@ func MigrateUp() {
 		&Group{},
 		&Payment{},
 		&Avatar{},
-		&Bank{})
+		&StripeAccount{})
 }
 
 // type Migrator interface {

@@ -13,11 +13,10 @@ type User struct {
 }
 
 // this is the stripe connection needed to pay users
-type Bank struct {
-	User     User
-	UserId   uint   `json:"userId"`
-	Selector string `json:"selector"`
-	Secret   string `json:"secret"`
+type StripeAccount struct {
+	User   User
+	UserId uint   `json:"userId"`
+	AcctId string `json:"acctId"`
 	gorm.Model
 }
 

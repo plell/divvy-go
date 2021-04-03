@@ -12,10 +12,14 @@ func MakeRoutes(e *echo.Echo) {
 	e.POST("/login", auth.Login)
 	e.POST("/user", db.CreateUser)
 	e.PATCH("/avatar", db.UpdateAvatar)
+	e.POST("/avatar/get", db.GetAvatar)
 
 	// token required (auth.IsLoggedIn middleware)
 	e.GET("/ping", misc.Pong, auth.IsLoggedIn)
 	e.GET("/user/:userId", db.GetUser, auth.IsLoggedIn)
+
+	e.POST("/stripe/account", db.CreateStripeAccount, auth.IsLoggedIn)
+	e.GET("/stripe/account", db.GetStripeAccount, auth.IsLoggedIn)
 
 	// e.POST("/users", createUser)
 	// e.GET("/users/:id", getUser)

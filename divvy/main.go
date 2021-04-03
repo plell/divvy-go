@@ -4,6 +4,9 @@ import (
 
 	//   "strconv"
 
+	"log"
+
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	DB "github.com/plell/divvygo/divvy/database"
@@ -18,6 +21,13 @@ var mySigningKey = []byte("mysecretphrase")
 func main() {
 	// Echo instance
 	e := echo.New()
+
+	// Load .env
+	err := godotenv.Load()
+
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 
 	// Middleware
 	e.Use(middleware.Logger())
