@@ -6,7 +6,7 @@ func MigrateUp() {
 		&Avatar{},
 		&StripeAccount{},
 		&Collaborator{},
-		&Collab{},
+		&DivvyPod{},
 		&Selector{},
 		&Payment{},
 	)

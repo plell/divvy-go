@@ -91,6 +91,10 @@ func GetUser(c echo.Context) error {
 
 	result := DB.First(&user, user_id)
 
+	// skinny load
+	// user := UserAPI{}
+	// result := DB.Model(&User{}).First(&user, user_id)
+
 	if result.Error != nil {
 		return AbstractError(c)
 	}

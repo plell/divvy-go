@@ -13,7 +13,7 @@ func MakeRoutes(e *echo.Echo) {
 	mySigningKey := GetSigningKey()
 
 	// token required group
-	r := e.Group("/r")
+	r := e.Group("/a")
 	config := middleware.JWTConfig{
 		Claims:     &jwtCustomClaims{},
 		SigningKey: mySigningKey,
@@ -24,7 +24,9 @@ func MakeRoutes(e *echo.Echo) {
 	r.GET("/user/:userId", GetUser)
 	r.PATCH("/avatar", UpdateAvatar)
 	r.GET("/avatar", GetAvatar)
-	r.GET("/collabs", GetCollabs)
+	r.GET("/pod/list", GetDivvyPodList)
+	r.GET("/pod/:selector", GetDivvyPod)
+	r.POST("/pod", CreateDivvyPod)
 	r.POST("/stripe/account", CreateStripeAccount)
 	r.GET("/stripe/account", GetStripeAccount)
 	// e.POST("/users", createUser)

@@ -40,7 +40,7 @@ func GetStripeAccount(c echo.Context) error {
 	result := DB.Where("user_id = ?", user_id).First(&stripeAccount)
 
 	if result.Error != nil {
-		return c.String(http.StatusInternalServerError, "You haven't linked a payment account")
+		return c.String(http.StatusInternalServerError, "You haven't linked a payment account yet")
 	}
 
 	stripe.Key = getStripeKey()
