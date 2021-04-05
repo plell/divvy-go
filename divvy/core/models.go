@@ -14,10 +14,12 @@ type User struct {
 	Selector    string `json:"selector"`
 	gorm.Model
 }
+
 type UserAPI struct {
 	DisplayName string `json:"displayName"`
 	Username    string `json:"username"`
 	Selector    string `json:"selector"`
+	Avatar      []uint `json:"avatar"`
 }
 
 var STRIPE_ACCOUT_TABLE = "stripe_accounts"
@@ -62,29 +64,33 @@ type AvatarAPI struct {
 	Feature8 uint   `json:"feature8"`
 	Feature9 uint   `json:"feature9"`
 	Selector string `json:"selector"`
+	UserId   uint   `json:"userId"`
 }
 
 var COLLABORATOR_TABLE = "collaborators"
 
 type Collaborator struct {
-	User       User
-	UserId     uint `json:"userId"`
-	DivvyPod   DivvyPod
-	DivvyPodId uint   `json:"divvyPodId"`
-	IsAdmin    uint   `json:"isAdmin"`
-	Selector   string `json:"selector"`
+	User     User
+	UserId   uint `json:"userId"`
+	Pod      Pod
+	PodId    uint    `json:"podId"`
+	IsAdmin  uint    `json:"isAdmin"`
+	Selector string  `json:"selector"`
+	Claim    float64 `json:"claim"`
 	gorm.Model
 }
 type CollaboratorAPI struct {
-	UserId     uint   `json:"userId"`
-	DivvyPodId uint   `json:"divvyPodId"`
-	IsAdmin    uint   `json:"isAdmin"`
-	Selector   string `json:"selector"`
+	ID       uint    `json:"id"`
+	UserId   uint    `json:"userId"`
+	PodId    uint    `json:"podId"`
+	IsAdmin  uint    `json:"isAdmin"`
+	Selector string  `json:"selector"`
+	Claim    float64 `json:"claim"`
 }
 
-var DIVVY_POD_TABLE = "divvy_pods"
+var POD_TABLE = "pods"
 
-type DivvyPod struct {
+type Pod struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	User        User
@@ -92,7 +98,8 @@ type DivvyPod struct {
 	Selector    string `json:"selector"`
 	gorm.Model
 }
-type DivvyPodAPI struct {
+type PodAPI struct {
+	ID          uint   `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Selector    string `json:"selector"`
@@ -115,12 +122,13 @@ type Payment struct {
 	UserId         uint `json:"userId"`
 	Collaborator   Collaborator
 	CollaboratorId uint `json:"collaboratorId"`
-	DivvyPod       DivvyPod
-	DivvyPodId     uint   `json:"divvyPodId"`
+	Pod            Pod
+	PodId          uint   `json:"podId"`
 	Selector       string `json:"selector"`
 	gorm.Model
 }
 type PaymentAPI struct {
+	ID       uint   `json:"id"`
 	Amount   string `json:"amount"`
 	Currency string `json:"currency"`
 	Selector string `json:"selector"`

@@ -17,7 +17,7 @@ func AbstractError(c echo.Context) error {
 	return c.String(http.StatusInternalServerError, "")
 }
 
-var pool = "abcdefghijklmnopqrstuvwxyzABCEFGHIJKLMNOPQRSTUVWXYZ:|?$%@][{}#&/()*1234567890"
+var pool = "abcdefghijklmnopqrstuvwxyzABCEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
 func MakeSelector(tableName string) string {
 	rand.Seed(time.Now().UnixNano())
@@ -57,4 +57,36 @@ func MakeSelector(tableName string) string {
 	}
 
 	return randomSelector
+}
+
+func ContainsInt(arr []uint, val uint) bool {
+	for _, a := range arr {
+		if a == val {
+			return true
+		}
+	}
+	return false
+}
+
+func AvatarToArray(avatar Avatar) []uint {
+	avatarFeatures := []uint{avatar.Feature1,
+		avatar.Feature2,
+		avatar.Feature3,
+		avatar.Feature4,
+		avatar.Feature5,
+		avatar.Feature6,
+		avatar.Feature7,
+		avatar.Feature8,
+		avatar.Feature9}
+
+	return avatarFeatures
+}
+
+func BuildUser(user User, avatar Avatar) UserAPI {
+	return UserAPI{
+		DisplayName: user.DisplayName,
+		Username:    user.Username,
+		Selector:    user.Selector,
+		Avatar:      AvatarToArray(avatar),
+	}
 }

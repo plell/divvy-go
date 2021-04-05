@@ -115,15 +115,7 @@ func GetAvatar(c echo.Context) error {
 		return AbstractError(c)
 	}
 
-	avatarFeatures := []uint{avatar.Feature1,
-		avatar.Feature2,
-		avatar.Feature3,
-		avatar.Feature4,
-		avatar.Feature5,
-		avatar.Feature6,
-		avatar.Feature7,
-		avatar.Feature8,
-		avatar.Feature9}
+	avatarFeatures := AvatarToArray(avatar)
 
 	response := AvatarResponse{
 		Avatar: avatarFeatures}

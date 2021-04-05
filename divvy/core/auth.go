@@ -18,9 +18,8 @@ type Credentials struct {
 }
 
 type LoginResponse struct {
-	Token  string `json:"token"`
-	User   User   `json:"user"`
-	Avatar []uint `json:"avatar"`
+	Token string  `json:"token"`
+	User  UserAPI `json:"user"`
 }
 
 type jwtUserClaims struct {
@@ -70,13 +69,6 @@ func Login(c echo.Context) error {
 		return echo.ErrUnauthorized
 	}
 
-	// claims := &jwtUserClaims{
-	// 	user,
-	// 	jwt.StandardClaims{
-	// 		ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
-	// 	},
-	// }
-
 	claims := &jwtCustomClaims{
 		UserId: user.ID,
 		StandardClaims: jwt.StandardClaims{
@@ -85,18 +77,6 @@ func Login(c echo.Context) error {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// Create token
-	// token := jwt.New(jwt.SigningMethodHS256)
-	// claims := token.Claims.(jwt.MapClaims)
-	// claims["user"] = user.ID
-	// claims["admin"] = true
-	// claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
-
-	// token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	// Set claims
-	// This is the information which frontend can use
-	// The backend can also decode the token and get admin etc.
 
 	// Generate encoded token and send it as response.
 	// The signing string should be secret (a generated UUID          works too)
@@ -113,20 +93,11 @@ func Login(c echo.Context) error {
 		return echo.ErrUnauthorized
 	}
 
-	avatarFeatures := []uint{avatar.Feature1,
-		avatar.Feature2,
-		avatar.Feature3,
-		avatar.Feature4,
-		avatar.Feature5,
-		avatar.Feature6,
-		avatar.Feature7,
-		avatar.Feature8,
-		avatar.Feature9}
+	formatUser := BuildUser(user, avatar)
 
 	response := LoginResponse{
-		Token:  t,
-		User:   user,
-		Avatar: avatarFeatures}
+		Token: t,
+		User:  formatUser}
 
 	return c.JSON(http.StatusOK, response)
 
