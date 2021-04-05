@@ -82,11 +82,27 @@ func AvatarToArray(avatar Avatar) []uint {
 	return avatarFeatures
 }
 
-func BuildUser(user User, avatar Avatar) UserAPI {
+func BuildUser(user User) UserAPI {
+	avatar := Avatar{}
+	DB.Where("user_id = ?", user.ID).Find(&avatar)
+
 	return UserAPI{
 		DisplayName: user.DisplayName,
 		Username:    user.Username,
 		Selector:    user.Selector,
 		Avatar:      AvatarToArray(avatar),
+	}
+}
+
+func BuildPod(pod Pod) PodAPI {
+	collaborators := []Collaborator{}
+	DB.Model(&Collaborator{}).Where("pod_id = ?", pod.ID).Find(&collaborators)
+
+	memberCount := len(collaborators)
+	return PodAPI{
+		Name:        pod.Name,
+		Description: pod.Description,
+		Selector:    pod.Selector,
+		MemberCount: memberCount,
 	}
 }

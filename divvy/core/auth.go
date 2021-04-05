@@ -85,15 +85,7 @@ func Login(c echo.Context) error {
 		return err
 	}
 
-	// Check in your db if the user exists or not
-	avatar := Avatar{}
-
-	result = DB.Where("user_id = ?", user.ID).First(&avatar)
-	if result.Error != nil {
-		return echo.ErrUnauthorized
-	}
-
-	formatUser := BuildUser(user, avatar)
+	formatUser := BuildUser(user)
 
 	response := LoginResponse{
 		Token: t,

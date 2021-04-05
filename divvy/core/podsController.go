@@ -49,7 +49,13 @@ func CreatePod(c echo.Context) error {
 		return AbstractError(c)
 	}
 
-	return c.String(http.StatusOK, "Success!")
+	podResponse := PodAPI{
+		Name:        pod.Name,
+		Description: pod.Description,
+		Selector:    pod.Selector,
+	}
+
+	return c.JSON(http.StatusOK, podResponse)
 }
 
 type Collaborators []Collaborator
@@ -68,9 +74,11 @@ func getPodIdsFromCollaborators(col Collaborators) []uint {
 func getUserIdsFromCollaborators(col Collaborators) []uint {
 	var list []uint
 	for _, collaborator := range col {
-		podId := collaborator.PodId
-		if !ContainsInt(list, podId) {
-			list = append(list, podId)
+		userId := collaborator.UserId
+		log.Println("getUserIdsFromCollaborators")
+		log.Println(userId)
+		if !ContainsInt(list, userId) {
+			list = append(list, userId)
 		}
 	}
 	return list
@@ -90,7 +98,7 @@ func GetPodList(c echo.Context) error {
 		return AbstractError(c)
 	}
 
-	pods := []PodAPI{}
+	pods := []Pod{}
 	podIds := getPodIdsFromCollaborators(collaborators)
 	// result = DB.Where("id = ?", user_id).Find(&collabs)
 
@@ -98,15 +106,22 @@ func GetPodList(c echo.Context) error {
 		log.Println("NO PODS!")
 		return c.JSON(http.StatusOK, pods)
 	}
-	// IF podIds is empty is returns all!
-	// SELECT * FROM divvy_pods WHERE id IN (1,2,3);
-	result = DB.Model(&Pod{}).Where(podIds).Find(&pods)
 
+	// IF podIds is empty it returns all!
+	// SELECT * FROM divvy_pods WHERE id IN (1,2,3);
+	result = DB.Where(podIds).Find(&pods)
 	if result.Error != nil {
 		return AbstractError(c)
 	}
 
-	return c.JSON(http.StatusOK, pods)
+	podsList := []PodAPI{}
+
+	for _, p := range pods {
+		formattedPod := BuildPod(p)
+		podsList = append(podsList, formattedPod)
+	}
+
+	return c.JSON(http.StatusOK, podsList)
 }
 
 type PodResponse struct {
@@ -151,15 +166,11 @@ func GetPod(c echo.Context) error {
 	users := []User{}
 	userIds := getUserIdsFromCollaborators(collaborators)
 
+	log.Println("userIds")
+	log.Println(userIds)
+
 	result = DB.Where(userIds).Find(&users)
 
-	if result.Error != nil {
-		return AbstractError(c)
-	}
-
-	// get all my avatar records
-	avatars := []Avatar{}
-	result = DB.Where("user_id = ?", userIds).Find(&avatars)
 	if result.Error != nil {
 		return AbstractError(c)
 	}
@@ -167,10 +178,12 @@ func GetPod(c echo.Context) error {
 	members := []UserAPI{}
 	// append avatars to users
 	for _, u := range users {
-		thisAvatar := FindAvatarByUserId(avatars, u.ID)
-		user := BuildUser(u, thisAvatar)
+		user := BuildUser(u)
 		members = append(members, user)
 	}
+
+	log.Println("members")
+	log.Println(members)
 
 	response := PodResponse{
 		Pod:     pod,

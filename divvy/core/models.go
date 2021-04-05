@@ -103,6 +103,7 @@ type PodAPI struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Selector    string `json:"selector"`
+	MemberCount int    `json:"memberCount"`
 }
 
 var SELECTOR_TABLE = "selectors"
