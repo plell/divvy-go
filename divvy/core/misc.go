@@ -59,6 +59,22 @@ func MakeSelector(tableName string) string {
 	return randomSelector
 }
 
+func MakeInviteCode() string {
+	rand.Seed(time.Now().UnixNano())
+	l := 24
+	bytes := make([]byte, l)
+
+	randomSelector := ""
+	// create random string
+	for i := 0; i < l; i++ {
+		bytes[i] = pool[rand.Intn(len(pool))]
+	}
+
+	randomSelector = string(bytes)
+
+	return randomSelector
+}
+
 func ContainsInt(arr []uint, val uint) bool {
 	for _, a := range arr {
 		if a == val {

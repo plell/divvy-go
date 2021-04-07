@@ -91,6 +91,9 @@ func GetPodList(c echo.Context) error {
 		return AbstractError(c)
 	}
 
+	// test sending an email
+	// SendEmail()
+
 	// get all my collaborator records
 	collaborators := []Collaborator{}
 	result := DB.Where("user_id = ?", user_id).Find(&collaborators)
@@ -191,6 +194,101 @@ func GetPod(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, response)
+}
+
+type PodJoiner struct {
+	Code string `json:"code"`
+}
+
+func JoinPod(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c)
+	}
+
+	req := PodJoiner{}
+	defer c.Request().Body.Close()
+	err = json.NewDecoder(c.Request().Body).Decode(&req)
+
+	// get user
+	user := User{}
+	result := DB.First(&user, user_id)
+	if result.Error != nil {
+		return AbstractError(c)
+	}
+
+	if err != nil {
+		return AbstractError(c)
+	}
+
+	invite := Invite{}
+	result = DB.Where("code = ?", req.Code).First(&invite)
+	if result.Error != nil {
+		return AbstractError(c)
+	}
+
+	if user.Username != invite.Email {
+		// this code was made for a different user
+		return AbstractError(c)
+	}
+
+	collaborator := Collaborator{
+		UserId:   user_id,
+		PodId:    invite.PodId,
+		IsAdmin:  0,
+		Selector: MakeSelector(COLLABORATOR_TABLE),
+	}
+
+	result = DB.Create(&collaborator)
+
+	if result.Error != nil {
+		return AbstractError(c)
+	}
+
+	// delete the invite, its been used
+	DB.Delete(&invite)
+
+	return c.String(http.StatusOK, "Success")
+}
+
+func GetInvites(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c)
+	}
+
+	podSelector := c.Param("podSelector")
+
+	pod := Pod{}
+	result := DB.Where("selector = ?", podSelector).Find(&pod)
+	if result.Error != nil {
+		return AbstractError(c)
+	}
+
+	// make sure this user is an admin of pod
+	collaborator := Collaborator{}
+	result = DB.Where("pod_id = ?", pod.ID).Where("user_id = ?", user_id).First(&collaborator)
+	if result.Error != nil {
+		return AbstractError(c)
+	}
+
+	if collaborator.IsAdmin != 1 {
+		// not authorized
+		return AbstractError(c)
+	}
+
+	// get user
+	invites := []InviteAPI{}
+	result = DB.Model(&Invite{}).Where("pod_id = ?", pod.ID).Find(&invites)
+
+	if result.Error != nil {
+		return AbstractError(c)
+	}
+
+	log.Println("invites")
+	log.Println(invites)
+
+	return c.JSON(http.StatusOK, invites)
 }
 
 func FindAvatarByUserId(avatars []Avatar, userId uint) Avatar {

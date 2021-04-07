@@ -9,6 +9,7 @@ func MigrateUp() {
 		&Pod{},
 		&Selector{},
 		&Payment{},
+		&Invite{},
 	)
 }
 

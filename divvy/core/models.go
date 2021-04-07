@@ -10,6 +10,7 @@ var USER_TABLE = "users"
 type User struct {
 	DisplayName string `json:"displayName"`
 	Username    string `json:"username"`
+	City        string `json:"city"`
 	Password    string `gorm:"varchar(70)" json:"password"`
 	Selector    string `json:"selector"`
 	gorm.Model
@@ -18,6 +19,7 @@ type User struct {
 type UserAPI struct {
 	DisplayName string `json:"displayName"`
 	Username    string `json:"username"`
+	City        string `json:"city"`
 	Selector    string `json:"selector"`
 	Avatar      []uint `json:"avatar"`
 }
@@ -132,5 +134,22 @@ type PaymentAPI struct {
 	ID       uint   `json:"id"`
 	Amount   string `json:"amount"`
 	Currency string `json:"currency"`
+	Selector string `json:"selector"`
+}
+
+var INVITE_TABLE = "invites"
+
+type Invite struct {
+	Code        string `json:"code"`
+	Email       string `json:"email"`
+	Pod         Pod
+	PodId       uint   `json:"podId"`
+	CreatedById uint   `json:"createdById"`
+	Selector    string `json:"selector"`
+	gorm.Model
+}
+
+type InviteAPI struct {
+	Email    string `json:"email"`
 	Selector string `json:"selector"`
 }
