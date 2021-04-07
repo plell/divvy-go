@@ -25,11 +25,13 @@ func MakeRoutes(e *echo.Echo) {
 	r.PATCH("/avatar", UpdateAvatar)
 	r.GET("/avatar", GetAvatar)
 	r.GET("/pod/list", GetPodList)
+	r.GET("/pod/:selector", GetPod)
 
 	r.GET("/pod/invites/:podSelector", GetInvites)
 	r.POST("/pod", CreatePod)
 	r.POST("/pod/join", JoinPod)
 	r.POST("/pod/invite", SendInvite)
+	r.DELETE("/pod/invite/:selector", DeleteInvite)
 	r.POST("/stripe/account", CreateStripeAccount)
 	r.GET("/stripe/account", GetStripeAccount)
 	// e.POST("/users", createUser)

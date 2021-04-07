@@ -11,6 +11,7 @@ import (
 
 type UserCreator struct {
 	DisplayName string `json:"displayName"`
+	City        string `json:"city"`
 	Username    string `json:"username"`
 	Password    string `json:"password"`
 	Feature1    uint   `json:"feature1"`
@@ -49,6 +50,7 @@ func CreateUser(c echo.Context) error {
 		Username:    req.Username,
 		Password:    hashedPassword,
 		DisplayName: req.DisplayName,
+		City:        req.City,
 		Selector:    MakeSelector(USER_TABLE),
 	}
 

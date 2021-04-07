@@ -106,6 +106,7 @@ func BuildUser(user User) UserAPI {
 		DisplayName: user.DisplayName,
 		Username:    user.Username,
 		Selector:    user.Selector,
+		City:        user.City,
 		Avatar:      AvatarToArray(avatar),
 	}
 }

@@ -169,9 +169,6 @@ func GetPod(c echo.Context) error {
 	users := []User{}
 	userIds := getUserIdsFromCollaborators(collaborators)
 
-	log.Println("userIds")
-	log.Println(userIds)
-
 	result = DB.Where(userIds).Find(&users)
 
 	if result.Error != nil {
@@ -285,10 +282,28 @@ func GetInvites(c echo.Context) error {
 		return AbstractError(c)
 	}
 
-	log.Println("invites")
-	log.Println(invites)
-
 	return c.JSON(http.StatusOK, invites)
+}
+
+func DeleteInvite(c echo.Context) error {
+	// user_id, err := GetUserIdFromToken(c)
+	// if err != nil {
+	// 	return AbstractError(c)
+	// }
+
+	selector := c.Param("selector")
+
+	// get user
+	invite := Invite{}
+
+	result := DB.Where("selector = ?", selector).First(&invite)
+	if result.Error != nil {
+		return AbstractError(c)
+	}
+
+	DB.Delete(&invite)
+
+	return c.String(http.StatusOK, "OK!")
 }
 
 func FindAvatarByUserId(avatars []Avatar, userId uint) Avatar {

@@ -49,6 +49,7 @@ func SendInvite(c echo.Context) error {
 		Email:       req.Email,
 		PodId:       pod.ID,
 		CreatedById: user_id,
+		Selector:    MakeSelector(INVITE_TABLE),
 	}
 
 	result = DB.Create(&invite)
