@@ -9,6 +9,7 @@ func MakeRoutes(e *echo.Echo) {
 	// token not required group
 	e.POST("/login", Login)
 	e.POST("/user", CreateUser)
+	e.POST("/stripe/checkoutSession", CreateCheckoutSession)
 
 	mySigningKey := GetSigningKey()
 
@@ -32,8 +33,11 @@ func MakeRoutes(e *echo.Echo) {
 	r.POST("/pod/join", JoinPod)
 	r.POST("/pod/invite", SendInvite)
 	r.DELETE("/pod/invite/:selector", DeleteInvite)
-	r.POST("/stripe/account", CreateStripeAccount)
+	r.POST("/stripe/account", LinkStripeAccount)
+	r.POST("/stripe/transfer", CreateTransfer)
 	r.GET("/stripe/account", GetStripeAccount)
+	r.GET("/stripe/chargelist/:podSelector", GetPodChargeList)
+
 	// e.POST("/users", createUser)
 	// e.GET("/users/:id", getUser)
 	// e.PUT("/users/:id", updateUser)

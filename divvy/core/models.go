@@ -28,13 +28,13 @@ var STRIPE_ACCOUT_TABLE = "stripe_accounts"
 
 type StripeAccount struct {
 	User     User
-	UserId   uint   `json:"userId"`
-	AcctId   string `json:"acctId"`
+	UserID   uint   `json:"userId"`
+	AcctID   string `json:"acctId"`
 	Selector string `json:"selector"`
 	gorm.Model
 }
 type StripeAccountAPI struct {
-	AcctId   string `json:"acctId"`
+	AcctID   string `json:"acctId"`
 	Selector string `json:"selector"`
 }
 
@@ -42,7 +42,7 @@ var AVATAR_TABLE = "avatars"
 
 type Avatar struct {
 	User     User
-	UserId   uint   `json:"userId"`
+	UserID   uint   `json:"userId"`
 	Feature1 uint   `json:"feature1"`
 	Feature2 uint   `json:"feature2"`
 	Feature3 uint   `json:"feature3"`
@@ -66,16 +66,16 @@ type AvatarAPI struct {
 	Feature8 uint   `json:"feature8"`
 	Feature9 uint   `json:"feature9"`
 	Selector string `json:"selector"`
-	UserId   uint   `json:"userId"`
+	UserID   uint   `json:"userId"`
 }
 
 var COLLABORATOR_TABLE = "collaborators"
 
 type Collaborator struct {
 	User     User
-	UserId   uint `json:"userId"`
+	UserID   uint `json:"userId"`
 	Pod      Pod
-	PodId    uint    `json:"podId"`
+	PodID    uint    `json:"podId"`
 	IsAdmin  uint    `json:"isAdmin"`
 	Selector string  `json:"selector"`
 	Claim    float64 `json:"claim"`
@@ -83,8 +83,8 @@ type Collaborator struct {
 }
 type CollaboratorAPI struct {
 	ID       uint    `json:"id"`
-	UserId   uint    `json:"userId"`
-	PodId    uint    `json:"podId"`
+	UserID   uint    `json:"userId"`
+	PodID    uint    `json:"podId"`
 	IsAdmin  uint    `json:"isAdmin"`
 	Selector string  `json:"selector"`
 	Claim    float64 `json:"claim"`
@@ -96,7 +96,7 @@ type Pod struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	User        User
-	UserId      uint   `json:"userId"`
+	UserID      uint   `json:"userId"`
 	Selector    string `json:"selector"`
 	gorm.Model
 }
@@ -119,15 +119,16 @@ type Selector struct {
 var PAYMENT_TABLE = "payments"
 
 type Payment struct {
-	Amount         string `json:"amount"`
-	Currency       string `json:"currency"`
-	User           User
-	UserId         uint `json:"userId"`
-	Collaborator   Collaborator
-	CollaboratorId uint `json:"collaboratorId"`
-	Pod            Pod
-	PodId          uint   `json:"podId"`
-	Selector       string `json:"selector"`
+	Amount        int64  `json:"amount"`
+	Currency      string `json:"currency"`
+	TransferGroup string `json:"transferGroup"`
+	Status        uint   `json:"status"`
+	SessionID     string `json:"sessionId"`
+	User          User
+	UserID        uint `json:"userId"`
+	Pod           Pod
+	PodID         uint   `json:"PodId"`
+	Selector      string `json:"selector"`
 	gorm.Model
 }
 type PaymentAPI struct {
@@ -143,8 +144,8 @@ type Invite struct {
 	Code        string `json:"code"`
 	Email       string `json:"email"`
 	Pod         Pod
-	PodId       uint   `json:"podId"`
-	CreatedById uint   `json:"createdById"`
+	PodID       uint   `json:"podId"`
+	CreatedByID uint   `json:"createdById"`
 	Selector    string `json:"selector"`
 	gorm.Model
 }

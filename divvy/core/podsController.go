@@ -24,7 +24,7 @@ func CreatePod(c echo.Context) error {
 	}
 
 	pod := Pod{
-		UserId:      user_id,
+		UserID:      user_id,
 		Name:        req.Name,
 		Description: req.Description,
 		Selector:    MakeSelector(POD_TABLE),
@@ -37,8 +37,8 @@ func CreatePod(c echo.Context) error {
 	}
 	// create admin collaborator
 	collaborator := Collaborator{
-		PodId:    pod.ID,
-		UserId:   user_id,
+		PodID:    pod.ID,
+		UserID:   user_id,
 		IsAdmin:  1,
 		Selector: MakeSelector(COLLABORATOR_TABLE),
 	}
@@ -63,7 +63,7 @@ type Collaborators []Collaborator
 func getPodIdsFromCollaborators(col Collaborators) []uint {
 	var list []uint
 	for _, collaborator := range col {
-		podId := collaborator.PodId
+		podId := collaborator.PodID
 		if !ContainsInt(list, podId) {
 			list = append(list, podId)
 		}
@@ -74,7 +74,7 @@ func getPodIdsFromCollaborators(col Collaborators) []uint {
 func getUserIdsFromCollaborators(col Collaborators) []uint {
 	var list []uint
 	for _, collaborator := range col {
-		userId := collaborator.UserId
+		userId := collaborator.UserID
 		log.Println("getUserIdsFromCollaborators")
 		log.Println(userId)
 		if !ContainsInt(list, userId) {
@@ -230,8 +230,8 @@ func JoinPod(c echo.Context) error {
 	}
 
 	collaborator := Collaborator{
-		UserId:   user_id,
-		PodId:    invite.PodId,
+		UserID:   user_id,
+		PodID:    invite.PodID,
 		IsAdmin:  0,
 		Selector: MakeSelector(COLLABORATOR_TABLE),
 	}
@@ -308,7 +308,7 @@ func DeleteInvite(c echo.Context) error {
 
 func FindAvatarByUserId(avatars []Avatar, userId uint) Avatar {
 	for _, avatar := range avatars {
-		if userId == avatar.UserId {
+		if userId == avatar.UserID {
 			return avatar
 		}
 	}

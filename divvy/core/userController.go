@@ -61,7 +61,7 @@ func CreateUser(c echo.Context) error {
 	}
 
 	avatar := Avatar{
-		UserId:   user.ID,
+		UserID:   user.ID,
 		Feature1: req.Feature1,
 		Feature2: req.Feature2,
 		Feature3: req.Feature3,

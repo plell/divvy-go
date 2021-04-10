@@ -28,7 +28,7 @@ type jwtUserClaims struct {
 }
 
 type jwtCustomClaims struct {
-	UserId uint `json:"UserId"`
+	UserID uint `json:"UserId"`
 	// UUID  string `json:"uuid"`
 	// Admin bool   `json:"admin"`
 	jwt.StandardClaims
@@ -70,7 +70,7 @@ func Login(c echo.Context) error {
 	}
 
 	claims := &jwtCustomClaims{
-		UserId: user.ID,
+		UserID: user.ID,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
 		},
@@ -115,7 +115,7 @@ func GetUserIdFromToken(c echo.Context) (uint, error) {
 	user := c.Get("user").(*jwt.Token)
 	claims := user.Claims.(*jwtCustomClaims)
 	log.Println(claims, "claims")
-	user_id := claims.UserId
+	user_id := claims.UserID
 
 	log.Println("GOT USER ID ")
 	log.Println(user_id)

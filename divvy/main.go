@@ -38,6 +38,15 @@ func main() {
 	// DB Automigrate
 	core.MigrateUp()
 
+	// set stripe webhooks
+	// stripe listen --forward-to http://localhost:8000/webhook
+	e.GET("/webhook", echo.HandlerFunc(core.HandleStripeWebhook))
+
+	// addr := "localhost:8000"
+
+	// log.Printf("Listening on %s ...", addr)
+	// log.Fatal(http.ListenAndServe(addr, nil))
+
 	// Start server
 	e.Logger.Fatal(e.Start(":8000"))
 }

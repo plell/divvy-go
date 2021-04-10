@@ -2,13 +2,20 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 
 	"github.com/labstack/echo/v4"
-	"github.com/stripe/stripe-go"
-	"github.com/stripe/stripe-go/account"
-	"github.com/stripe/stripe-go/accountlink"
+	"github.com/stripe/stripe-go/v72"
+	"github.com/stripe/stripe-go/v72/account"
+	"github.com/stripe/stripe-go/v72/accountlink"
+	"github.com/stripe/stripe-go/v72/charge"
+	"github.com/stripe/stripe-go/v72/checkout/session"
+	"github.com/stripe/stripe-go/v72/transfer"
+	"github.com/stripe/stripe-go/v72/webhook"
 )
 
 // // or set key per transaction (common in Connect use cases)
@@ -46,7 +53,7 @@ func GetStripeAccount(c echo.Context) error {
 	stripe.Key = getStripeKey()
 
 	acct, err := account.GetByID(
-		stripeAccount.AcctId,
+		stripeAccount.AcctID,
 		nil,
 	)
 
@@ -57,33 +64,47 @@ func GetStripeAccount(c echo.Context) error {
 	return c.JSON(http.StatusOK, acct)
 }
 
-func CreateStripeAccount(c echo.Context) error {
+func LinkStripeAccount(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c)
+	}
+
 	stripe.Key = getStripeKey()
 
 	decodedJson := User{}
 	defer c.Request().Body.Close()
-	err := json.NewDecoder(c.Request().Body).Decode(&decodedJson)
+	err = json.NewDecoder(c.Request().Body).Decode(&decodedJson)
 	if err != nil {
-		return c.String(http.StatusInternalServerError, "")
+		return c.String(http.StatusInternalServerError, "no good")
 	}
 
 	// check if user has stripe account
 	stripeAccount := StripeAccount{}
 	accountId := ""
-	result := DB.Where("user_id = ?", 1).First(&stripeAccount)
+	result := DB.Where("user_id = ?", user_id).First(&stripeAccount)
 
 	if result.Error != nil {
 		// *******************
 		// no record was found
-		params := &stripe.AccountParams{
+		accountParams := &stripe.AccountParams{
+			// cant use capabailities with Standard Accounts
+			// Capabilities: &stripe.AccountCapabilitiesParams{
+			// 	CardPayments: &stripe.AccountCapabilitiesCardPaymentsParams{
+			// 		Requested: stripe.Bool(true),
+			// 	},
+			// 	Transfers: &stripe.AccountCapabilitiesTransfersParams{
+			// 		Requested: stripe.Bool(true),
+			// 	},
+			// },
 			Country: stripe.String("US"),
 			Email:   stripe.String("plelldavid+1@gmail.com"),
 			Type:    stripe.String("standard"),
 		}
-		acct, err := account.New(params)
+		acct, err := account.New(accountParams)
 
 		if err != nil {
-			return c.String(http.StatusInternalServerError, "")
+			return c.String(http.StatusInternalServerError, "broke making account")
 		}
 
 		// set accountId to be used in redirect linking below
@@ -91,8 +112,8 @@ func CreateStripeAccount(c echo.Context) error {
 
 		// create account in db
 		stripeAccount := StripeAccount{
-			AcctId:   acct.ID,
-			UserId:   1,
+			AcctID:   acct.ID,
+			UserID:   user_id,
 			Selector: MakeSelector(STRIPE_ACCOUT_TABLE),
 		}
 
@@ -105,8 +126,11 @@ func CreateStripeAccount(c echo.Context) error {
 		// *******************
 		// record was found
 		// set accountId to be used in redirect linking below
-		accountId = stripeAccount.AcctId
+		accountId = stripeAccount.AcctID
 	}
+
+	log.Println("HELLLLOOOO")
+	log.Println("**********************")
 
 	// redirect to the url
 	// response
@@ -316,15 +340,15 @@ func CreateStripeAccount(c echo.Context) error {
 
 	linkParams := &stripe.AccountLinkParams{
 		Account:    stripe.String(accountId),
-		FailureURL: stripe.String("https://www.linkedin.com/in/davidplell/stripesuccess"),
-		SuccessURL: stripe.String("https://www.linkedin.com/in/davidplell/striperetry"),
-		Type:       stripe.String("account_onboarding"), // "account_update" is only available with custom (pay per account, no thanks)
+		RefreshURL: stripe.String("https://example.com/reauth"),
+		ReturnURL:  stripe.String("https://example.com/return"),
+		Type:       stripe.String("account_onboarding"),
 	}
 
 	acctLink, err := accountlink.New(linkParams)
 
 	if err != nil {
-		return c.String(http.StatusInternalServerError, "")
+		return c.String(http.StatusInternalServerError, "broke creating link")
 	}
 
 	return c.JSON(http.StatusOK, acctLink)
@@ -338,4 +362,200 @@ func CreateStripeAccount(c echo.Context) error {
 	// 	"url": "https://connect.stripe.com/setup/s/9Fr1sKQnKVow"
 	//   }
 
+}
+
+type CreateCheckoutSessionResponse struct {
+	SessionID string `json:"sessionId"`
+}
+
+type CheckoutSessionRequest struct {
+	Amount      int64  `json:"amount"`
+	PodSelector string `json:"podSelector"`
+	Currency    string `json:"currency"`
+}
+
+func CreateCheckoutSession(c echo.Context) (err error) {
+
+	// here decode the pod selector and include it in TRANSFER GROUP
+	request := CheckoutSessionRequest{}
+	defer c.Request().Body.Close()
+	err = json.NewDecoder(c.Request().Body).Decode(&request)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "no good")
+	}
+
+	// get pod
+	pod := Pod{}
+	result := DB.Where("selector = ?", request.PodSelector).First(&pod)
+	if result.Error != nil {
+		return c.String(http.StatusInternalServerError, "Pod doesn't exist.")
+	}
+
+	transferGroup := MakeSelector("TRANSFER_GROUP")
+
+	stripe.Key = getStripeKey()
+	params := &stripe.CheckoutSessionParams{
+		PaymentIntentData: &stripe.CheckoutSessionPaymentIntentDataParams{
+			TransferGroup: stripe.String(transferGroup),
+		},
+		PaymentMethodTypes: stripe.StringSlice([]string{
+			"card",
+		}),
+		Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			&stripe.CheckoutSessionLineItemParams{
+				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
+					Currency: stripe.String(request.Currency),
+					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
+						Name: stripe.String("Sale"),
+					},
+					UnitAmount: stripe.Int64(request.Amount),
+				},
+				Quantity: stripe.Int64(1),
+			},
+		},
+		SuccessURL: stripe.String("https://example.com/success"),
+		CancelURL:  stripe.String("https://example.com/cancel"),
+	}
+
+	session, _ := session.New(params)
+
+	if err != nil {
+		return err
+	}
+
+	data := CreateCheckoutSessionResponse{
+		SessionID: session.ID,
+	}
+
+	// here we'll create a row in the db to show the initialized transaction,
+	// we'll finalize the db record in the stripe hook, after its been confirmed
+	payment := Payment{
+		PodID:         pod.ID,
+		Status:        0,
+		Amount:        request.Amount,
+		Currency:      request.Currency,
+		TransferGroup: transferGroup,
+		SessionID:     session.ID,
+		Selector:      MakeSelector(PAYMENT_TABLE),
+	}
+	DB.Create(&payment)
+
+	return c.JSON(http.StatusOK, data)
+}
+
+func CreateTransfer(c echo.Context) error {
+	// Create a Transfer to the connected account (later):
+	log.Println("createTransfer")
+	stripe.Key = getStripeKey()
+
+	transferParams := &stripe.TransferParams{
+		Amount:        stripe.Int64(300),
+		Currency:      stripe.String(string(stripe.CurrencyUSD)),
+		Destination:   stripe.String("acct_1IbyRQAAtogj5hWb"),
+		TransferGroup: stripe.String("MY_TRANSFER_GROUP"),
+	}
+	tr, _ := transfer.New(transferParams)
+
+	log.Println(tr)
+
+	// Create a second Transfer to another connected account (later):
+	// secondTransferParams := &stripe.TransferParams{
+	// 	Amount:        stripe.Int64(2000),
+	// 	Currency:      stripe.String(string(stripe.CurrencyUSD)),
+	// 	Destination:   stripe.String("{{OTHER_CONNECTED_STRIPE_ACCOUNT_ID}}"),
+	// 	TransferGroup: stripe.String("{PODSELECTOR}"),
+	// }
+	// secondTransfer, _ := transfer.New(secondTransferParams)
+	return c.String(http.StatusOK, "Success!")
+}
+
+type ChargeList struct {
+	Amount int64  `json:"amount"`
+	ID     string `json:"id"`
+}
+
+func GetPodChargeList(c echo.Context) error {
+
+	// get from params
+	// podSelector := c.Param("podSelector")
+
+	log.Println("GetPodCharges")
+	stripe.Key = getStripeKey()
+
+	params := &stripe.ChargeListParams{
+		// TransferGroup: stripe.String(podSelector),
+	}
+
+	charges := []*stripe.Charge{}
+	// params.Filters.AddFilter("limit", "", "3")
+	i := charge.List(params)
+	for i.Next() {
+		c := i.Charge()
+		charges = append(charges, c)
+	}
+
+	return c.JSON(http.StatusOK, charges)
+}
+
+// testing
+
+// Payment Intents API
+// When using the Payment Intents API with Stripe’s client libraries and SDKs, ensure that:
+
+// Authentication flows are triggered when required (use the regulatory test card numbers and PaymentMethods.)
+// No authentication (default U.S. card): 4242 4242 4242 4242.
+// Authentication required: 4000 0027 6000 3184.
+// The PaymentIntent is created with an idempotency key to avoid erroneously creating duplicate PaymentIntents for the same purchase.
+// Errors are caught and displayed properly in the UI.
+
+// webhooks
+// session checkout complete
+func HandleStripeWebhook(c echo.Context) error {
+	w := c.Response().Writer
+	req := c.Request()
+	// w http.ResponseWriter, req *http.Request
+	log.Println("hello, im the webhook")
+	const MaxBodyBytes = int64(65536)
+	req.Body = http.MaxBytesReader(w, req.Body, MaxBodyBytes)
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading request body: %v\n", err)
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return c.String(http.StatusOK, "ok")
+	}
+
+	webhookSecret := os.Getenv("STRIPE_WEBHOOK_SECRET")
+
+	// Verify webhook signature and extract the event.
+	// See https://stripe.com/docs/webhooks/signatures for more information.
+	event, err := webhook.ConstructEvent(body, req.Header.Get("Stripe-Signature"), webhookSecret)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error verifying webhook signature: %v\n", err)
+		w.WriteHeader(http.StatusBadRequest) // Return a 400 error on a bad signature.
+		return c.String(http.StatusOK, "ok")
+	}
+
+	log.Println(event.Type)
+
+	if event.Type == "checkout.session.completed" {
+		var session stripe.CheckoutSession
+		err := json.Unmarshal(event.Data.Raw, &session)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing webhook JSON: %v\n", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return c.String(http.StatusOK, "ok")
+		}
+		handleCompletedCheckoutSession(session)
+	}
+
+	return c.String(http.StatusOK, "ok")
+}
+
+func handleCompletedCheckoutSession(session stripe.CheckoutSession) {
+	// Fulfill the purchase.
+
+	// here is where the transaction record is updated, with a completed status
+	log.Println(session.ID)
 }

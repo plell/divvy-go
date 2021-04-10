@@ -47,8 +47,8 @@ func SendInvite(c echo.Context) error {
 	invite := Invite{
 		Code:        code,
 		Email:       req.Email,
-		PodId:       pod.ID,
-		CreatedById: user_id,
+		PodID:       pod.ID,
+		CreatedByID: user_id,
 		Selector:    MakeSelector(INVITE_TABLE),
 	}
 
