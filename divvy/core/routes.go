@@ -28,15 +28,18 @@ func MakeRoutes(e *echo.Echo) {
 	r.GET("/pod/list", GetPodList)
 	r.GET("/pod/:selector", GetPod)
 
-	r.GET("/pod/invites/:podSelector", GetInvites)
+	r.GET("/pod/invitelist/:podSelector", GetInvites)
 	r.POST("/pod", CreatePod)
 	r.POST("/pod/join", JoinPod)
 	r.POST("/pod/invite", SendInvite)
 	r.DELETE("/pod/invite/:selector", DeleteInvite)
 	r.POST("/stripe/account", LinkStripeAccount)
 	r.POST("/stripe/transfer", CreateTransfer)
-	r.GET("/stripe/account", GetStripeAccount)
+	r.GET("/stripe/transferlist/:podSelector", GetPodTransferList)
+	// we may not be able to get payouts for individual accounts...
+	r.GET("/stripe/payoutlist/:podSelector", GetPodPayoutList)
 	r.GET("/stripe/chargelist/:podSelector", GetPodChargeList)
+	r.GET("/stripe/account", GetStripeAccount)
 
 	// e.POST("/users", createUser)
 	// e.GET("/users/:id", getUser)

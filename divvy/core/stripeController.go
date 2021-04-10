@@ -14,6 +14,7 @@ import (
 	"github.com/stripe/stripe-go/v72/accountlink"
 	"github.com/stripe/stripe-go/v72/charge"
 	"github.com/stripe/stripe-go/v72/checkout/session"
+	"github.com/stripe/stripe-go/v72/payout"
 	"github.com/stripe/stripe-go/v72/transfer"
 	"github.com/stripe/stripe-go/v72/webhook"
 )
@@ -129,213 +130,6 @@ func LinkStripeAccount(c echo.Context) error {
 		accountId = stripeAccount.AcctID
 	}
 
-	log.Println("HELLLLOOOO")
-	log.Println("**********************")
-
-	// redirect to the url
-	// response
-	// {
-	// 	"id": "acct_1IbvKYGXLOZpkynG",
-	// 	"object": "account",
-	// 	"business_profile": {
-	// 	  "mcc": "5734",
-	// 	  "name": null,
-	// 	  "product_description": "This service allows merchants to split payments among themselves.",
-	// 	  "support_address": {
-	// 		"city": "Seattle",
-	// 		"country": "US",
-	// 		"line1": "815 Northeast 71st Street",
-	// 		"line2": null,
-	// 		"postal_code": "98115",
-	// 		"state": "WA"
-	// 	  },
-	// 	  "support_email": null,
-	// 	  "support_phone": "+12067432667",
-	// 	  "support_url": null,
-	// 	  "url": "https://www.linkedin.com/in/davidplell/"
-	// 	},
-	// 	"business_type": "individual",
-	// 	"capabilities": {
-	// 	  "card_payments": {
-	// 		"requested": true
-	// 	  },
-	// 	  "transfers": {
-	// 		"requested": true
-	// 	  }
-	// 	},
-	// 	"charges_enabled": true,
-	// 	"company": {
-	// 	  "address": {
-	// 		"city": "Seattle",
-	// 		"country": "US",
-	// 		"line1": "815 Northeast 71st Street",
-	// 		"line2": null,
-	// 		"postal_code": "98115",
-	// 		"state": "WA"
-	// 	  },
-	// 	  "directors_provided": false,
-	// 	  "executives_provided": false,
-	// 	  "name": null,
-	// 	  "owners_provided": false,
-	// 	  "phone": "+12067432667",
-	// 	  "tax_id_provided": false,
-	// 	  "verification": {
-	// 		"document": {
-	// 		  "back": null,
-	// 		  "details": null,
-	// 		  "details_code": null,
-	// 		  "front": null
-	// 		}
-	// 	  }
-	// 	},
-	// 	"country": "US",
-	// 	"created": 1617401946,
-	// 	"default_currency": "usd",
-	// 	"details_submitted": true,
-	// 	"email": "jenny.rosen@example.com",
-	// 	"external_accounts": {
-	// 	  "object": "list",
-	// 	  "data": [
-	// 		{
-	// 		  "id": "ba_1IbwB8GXLOZpkynGh4onQ4e2",
-	// 		  "object": "bank_account",
-	// 		  "account": "acct_1IbvKYGXLOZpkynG",
-	// 		  "account_holder_name": null,
-	// 		  "account_holder_type": null,
-	// 		  "available_payout_methods": [
-	// 			"standard"
-	// 		  ],
-	// 		  "bank_name": "WASHINGTON STATE EMPLOYEES CU",
-	// 		  "country": "US",
-	// 		  "currency": "usd",
-	// 		  "default_for_currency": true,
-	// 		  "fingerprint": "4wuIq7ebo8W2jGfa",
-	// 		  "last4": "6066",
-	// 		  "metadata": {},
-	// 		  "routing_number": "325181028",
-	// 		  "status": "new"
-	// 		}
-	// 	  ],
-	// 	  "has_more": false,
-	// 	  "url": "/v1/accounts/acct_1IbvKYGXLOZpkynG/external_accounts"
-	// 	},
-	// 	"individual": {
-	// 	  "id": "person_4Ibw6i00jDFlXNr9",
-	// 	  "object": "person",
-	// 	  "account": "acct_1IbvKYGXLOZpkynG",
-	// 	  "address": {
-	// 		"city": "Seattle",
-	// 		"country": "US",
-	// 		"line1": "815 Northeast 71st Street",
-	// 		"line2": null,
-	// 		"postal_code": "98115",
-	// 		"state": "WA"
-	// 	  },
-	// 	  "created": 1617404933,
-	// 	  "dob": {
-	// 		"day": 10,
-	// 		"month": 12,
-	// 		"year": 1988
-	// 	  },
-	// 	  "email": "plelldavid@gmail.com",
-	// 	  "first_name": "David",
-	// 	  "id_number_provided": true,
-	// 	  "last_name": "Plell",
-	// 	  "metadata": {},
-	// 	  "phone": "+12067432667",
-	// 	  "relationship": {
-	// 		"director": false,
-	// 		"executive": false,
-	// 		"owner": false,
-	// 		"percent_ownership": null,
-	// 		"representative": true,
-	// 		"title": null
-	// 	  },
-	// 	  "requirements": {
-	// 		"currently_due": [],
-	// 		"errors": [],
-	// 		"eventually_due": [],
-	// 		"past_due": [],
-	// 		"pending_verification": []
-	// 	  },
-	// 	  "ssn_last_4_provided": true,
-	// 	  "verification": {
-	// 		"additional_document": {
-	// 		  "back": null,
-	// 		  "details": null,
-	// 		  "details_code": null,
-	// 		  "front": null
-	// 		},
-	// 		"details": null,
-	// 		"details_code": null,
-	// 		"document": {
-	// 		  "back": null,
-	// 		  "details": null,
-	// 		  "details_code": null,
-	// 		  "front": null
-	// 		},
-	// 		"status": "verified"
-	// 	  }
-	// 	},
-	// 	"metadata": {},
-	// 	"payouts_enabled": true,
-	// 	"requirements": {
-	// 	  "current_deadline": null,
-	// 	  "currently_due": [],
-	// 	  "disabled_reason": null,
-	// 	  "errors": [],
-	// 	  "eventually_due": [],
-	// 	  "past_due": [],
-	// 	  "pending_verification": []
-	// 	},
-	// 	"settings": {
-	// 	  "bacs_debit_payments": {},
-	// 	  "branding": {
-	// 		"icon": null,
-	// 		"logo": null,
-	// 		"primary_color": null,
-	// 		"secondary_color": null
-	// 	  },
-	// 	  "card_issuing": {
-	// 		"tos_acceptance": {
-	// 		  "date": null,
-	// 		  "ip": null
-	// 		}
-	// 	  },
-	// 	  "card_payments": {
-	// 		"decline_on": {
-	// 		  "avs_failure": false,
-	// 		  "cvc_failure": true
-	// 		},
-	// 		"statement_descriptor_prefix": "DIVVY"
-	// 	  },
-	// 	  "dashboard": {
-	// 		"display_name": "D÷vvy",
-	// 		"timezone": "America/Los_Angeles"
-	// 	  },
-	// 	  "payments": {
-	// 		"statement_descriptor": "WWW.DIVVYDOWN.COM",
-	// 		"statement_descriptor_kana": null,
-	// 		"statement_descriptor_kanji": null
-	// 	  },
-	// 	  "payouts": {
-	// 		"debit_negative_balances": true,
-	// 		"schedule": {
-	// 		  "delay_days": 2,
-	// 		  "interval": "daily"
-	// 		},
-	// 		"statement_descriptor": null
-	// 	  },
-	// 	  "sepa_debit_payments": {}
-	// 	},
-	// 	"tos_acceptance": {
-	// 	  "date": 1617405340,
-	// 	  "ip": "97.113.54.50",
-	// 	  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36"
-	// 	},
-	// 	"type": "custom"
-	//   }
-
 	//then prompt the standard connect account setup
 
 	linkParams := &stripe.AccountLinkParams{
@@ -375,6 +169,7 @@ type CheckoutSessionRequest struct {
 }
 
 func CreateCheckoutSession(c echo.Context) (err error) {
+	user_id, err := GetUserIdFromToken(c)
 
 	// here decode the pod selector and include it in TRANSFER GROUP
 	request := CheckoutSessionRequest{}
@@ -418,6 +213,13 @@ func CreateCheckoutSession(c echo.Context) (err error) {
 		CancelURL:  stripe.String("https://example.com/cancel"),
 	}
 
+	// add user selector to metadata if available
+	user := User{}
+	result = DB.First(&user, user_id)
+	if result.Error == nil {
+		params.AddMetadata("userSelector", user.Selector)
+	}
+
 	session, _ := session.New(params)
 
 	if err != nil {
@@ -449,24 +251,23 @@ func CreateTransfer(c echo.Context) error {
 	log.Println("createTransfer")
 	stripe.Key = getStripeKey()
 
+	// Destination: get user stripe account
+	// TransferGroup: get pod selector
+	// transferParams.AddMetadata: get user selector (for listing)
+
 	transferParams := &stripe.TransferParams{
 		Amount:        stripe.Int64(300),
 		Currency:      stripe.String(string(stripe.CurrencyUSD)),
 		Destination:   stripe.String("acct_1IbyRQAAtogj5hWb"),
-		TransferGroup: stripe.String("MY_TRANSFER_GROUP"),
+		TransferGroup: stripe.String("thisPodSelector"),
 	}
+
+	transferParams.AddMetadata("userSelector", "thisUsersSelector")
+
 	tr, _ := transfer.New(transferParams)
 
 	log.Println(tr)
 
-	// Create a second Transfer to another connected account (later):
-	// secondTransferParams := &stripe.TransferParams{
-	// 	Amount:        stripe.Int64(2000),
-	// 	Currency:      stripe.String(string(stripe.CurrencyUSD)),
-	// 	Destination:   stripe.String("{{OTHER_CONNECTED_STRIPE_ACCOUNT_ID}}"),
-	// 	TransferGroup: stripe.String("{PODSELECTOR}"),
-	// }
-	// secondTransfer, _ := transfer.New(secondTransferParams)
 	return c.String(http.StatusOK, "Success!")
 }
 
@@ -478,13 +279,13 @@ type ChargeList struct {
 func GetPodChargeList(c echo.Context) error {
 
 	// get from params
-	// podSelector := c.Param("podSelector")
+	podSelector := c.Param("podSelector")
 
 	log.Println("GetPodCharges")
 	stripe.Key = getStripeKey()
 
 	params := &stripe.ChargeListParams{
-		// TransferGroup: stripe.String(podSelector),
+		TransferGroup: stripe.String(podSelector),
 	}
 
 	charges := []*stripe.Charge{}
@@ -496,6 +297,51 @@ func GetPodChargeList(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, charges)
+}
+
+func GetPodPayoutList(c echo.Context) error {
+
+	// get from params
+	// podSelector := c.Param("podSelector")
+	log.Println("GetPodPayoutList")
+	stripe.Key = getStripeKey()
+
+	params := &stripe.PayoutListParams{
+		// Destination: stripe.String(" "),
+	}
+
+	payouts := []*stripe.Payout{}
+
+	// params.Filters.AddFilter("limit", "", "3")
+	i := payout.List(params)
+	for i.Next() {
+		p := i.Payout()
+		payouts = append(payouts, p)
+	}
+
+	return c.JSON(http.StatusOK, payouts)
+}
+
+func GetPodTransferList(c echo.Context) error {
+
+	// get from params
+	podSelector := c.Param("podSelector")
+	log.Println("GetPodTransferList")
+	stripe.Key = getStripeKey()
+
+	params := &stripe.TransferListParams{
+		TransferGroup: stripe.String(podSelector),
+	}
+
+	transfers := []*stripe.Transfer{}
+	// params.Filters.AddFilter("limit", "", "3")
+	i := transfer.List(params)
+	for i.Next() {
+		t := i.Transfer()
+		transfers = append(transfers, t)
+	}
+
+	return c.JSON(http.StatusOK, transfers)
 }
 
 // testing
