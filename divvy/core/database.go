@@ -28,5 +28,6 @@ func ConnectDB() {
 		fmt.Println("DB ERROR:")
 		panic(err)
 	}
+
 	DB = db
 }

@@ -33,6 +33,11 @@ func MakeRoutes(e *echo.Echo) {
 	r.POST("/pod/join", JoinPod)
 	r.POST("/pod/invite", SendInvite)
 	r.DELETE("/pod/invite/:selector", DeleteInvite)
+
+	r.GET("/collaboratorlist/:podSelector", GetCollaboratorList)
+	r.PATCH("/collaborator/admin", UpdateCollaboratorAdmin)
+	r.DELETE("/collaborator/:selector", DeleteCollaborator)
+
 	r.POST("/stripe/account", LinkStripeAccount)
 	r.POST("/stripe/transfer", CreateTransfer)
 	r.GET("/stripe/transferlist/:podSelector", GetPodTransferList)

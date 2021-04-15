@@ -8,11 +8,14 @@ import (
 var USER_TABLE = "users"
 
 type User struct {
-	DisplayName string `json:"displayName"`
-	Username    string `json:"username"`
-	City        string `json:"city"`
-	Password    string `gorm:"varchar(70)" json:"password"`
-	Selector    string `json:"selector"`
+	DisplayName   string        `json:"displayName"`
+	Username      string        `json:"username"`
+	City          string        `json:"city"`
+	Password      string        `gorm:"varchar(70)" json:"password"`
+	Selector      string        `json:"selector"`
+	Avatar        Avatar        //`gorm:"PRELOAD"` //`gorm:"ForeignKey:ID;AssociationForeignKey:UserID"`
+	StripeAccount StripeAccount //`gorm:"PRELOAD:false"`
+	Collaborator  []Collaborator
 	gorm.Model
 }
 
@@ -27,7 +30,6 @@ type UserAPI struct {
 var STRIPE_ACCOUT_TABLE = "stripe_accounts"
 
 type StripeAccount struct {
-	User     User
 	UserID   uint   `json:"userId"`
 	AcctID   string `json:"acctId"`
 	Selector string `json:"selector"`
@@ -41,7 +43,6 @@ type StripeAccountAPI struct {
 var AVATAR_TABLE = "avatars"
 
 type Avatar struct {
-	User     User
 	UserID   uint   `json:"userId"`
 	Feature1 uint   `json:"feature1"`
 	Feature2 uint   `json:"feature2"`
@@ -76,18 +77,19 @@ type Collaborator struct {
 	UserID   uint `json:"userId"`
 	Pod      Pod
 	PodID    uint    `json:"podId"`
-	IsAdmin  uint    `json:"isAdmin"`
+	IsAdmin  bool    `json:"isAdmin"`
 	Selector string  `json:"selector"`
 	Claim    float64 `json:"claim"`
 	gorm.Model
 }
 type CollaboratorAPI struct {
-	ID       uint    `json:"id"`
-	UserID   uint    `json:"userId"`
-	PodID    uint    `json:"podId"`
-	IsAdmin  uint    `json:"isAdmin"`
-	Selector string  `json:"selector"`
-	Claim    float64 `json:"claim"`
+	IsAdmin     bool    `json:"isAdmin"`
+	Selector    string  `json:"selector"`
+	Claim       float64 `json:"claim"`
+	DisplayName string  `json:"displayName"`
+	Username    string  `json:"username"`
+	City        string  `json:"city"`
+	Avatar      []uint  `json:"avatar"`
 }
 
 var POD_TABLE = "pods"

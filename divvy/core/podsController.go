@@ -39,7 +39,7 @@ func CreatePod(c echo.Context) error {
 	collaborator := Collaborator{
 		PodID:    pod.ID,
 		UserID:   user_id,
-		IsAdmin:  1,
+		IsAdmin:  true,
 		Selector: MakeSelector(COLLABORATOR_TABLE),
 	}
 
@@ -128,8 +128,8 @@ func GetPodList(c echo.Context) error {
 }
 
 type PodResponse struct {
-	Pod     Pod       `json:"pod"`
-	Members []UserAPI `json:"members"`
+	Pod     Pod               `json:"pod"`
+	Members []CollaboratorAPI `json:"members"`
 }
 
 func GetPod(c echo.Context) error {
@@ -159,31 +159,18 @@ func GetPod(c echo.Context) error {
 	// get collaborators
 	collaborators := []Collaborator{}
 	// SELECT * FROM divvy_pods WHERE id IN (1,2,3);
-	result = DB.Model(&Collaborator{}).Where("pod_id = ?", pod.ID).Find(&collaborators)
+	result = DB.Preload("User").Preload("User.Avatar").Where("pod_id = ?", pod.ID).Find(&collaborators)
 
 	if result.Error != nil {
 		return AbstractError(c)
 	}
 
-	// get all my user records
-	users := []User{}
-	userIds := getUserIdsFromCollaborators(collaborators)
-
-	result = DB.Where(userIds).Find(&users)
-
-	if result.Error != nil {
-		return AbstractError(c)
-	}
-
-	members := []UserAPI{}
+	members := []CollaboratorAPI{}
 	// append avatars to users
-	for _, u := range users {
-		user := BuildUser(u)
+	for _, c := range collaborators {
+		user := BuildUserFromCollaborator(c)
 		members = append(members, user)
 	}
-
-	log.Println("members")
-	log.Println(members)
 
 	response := PodResponse{
 		Pod:     pod,
@@ -232,7 +219,7 @@ func JoinPod(c echo.Context) error {
 	collaborator := Collaborator{
 		UserID:   user_id,
 		PodID:    invite.PodID,
-		IsAdmin:  0,
+		IsAdmin:  false,
 		Selector: MakeSelector(COLLABORATOR_TABLE),
 	}
 
@@ -269,7 +256,7 @@ func GetInvites(c echo.Context) error {
 		return AbstractError(c)
 	}
 
-	if collaborator.IsAdmin != 1 {
+	if collaborator.IsAdmin == true {
 		// not authorized
 		return AbstractError(c)
 	}

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stripe/stripe-go/v72"
@@ -271,6 +272,65 @@ func CreateTransfer(c echo.Context) error {
 	return c.String(http.StatusOK, "Success!")
 }
 
+func DoTransfers(c echo.Context) error {
+	// Create a Transfer to the connected account (later):
+	log.Println("DoTransfers")
+	stripe.Key = getStripeKey()
+
+	// Destination: get user stripe account
+	// TransferGroup: get pod selector
+	// transferParams.AddMetadata: get user selector (for listing)
+	podSelector := c.Param("podSelector")
+
+	// get charges for pod
+	params := &stripe.ChargeListParams{
+		TransferGroup: stripe.String(podSelector),
+	}
+
+	// params.Filters.AddFilter("limit", "", "3")
+	i := charge.List(params)
+	for i.Next() {
+		c := i.Charge()
+		//for each charge, do transfers and update charge metadata
+		// get collaborators
+
+		chargeParams := &stripe.ChargeParams{}
+
+		collaborators := []Collaborator{}
+		for i, collaborator := range collaborators {
+			userSelector := collaborator.User.Selector
+			userStripeAccount := collaborator.User.StripeAccount.AcctID
+
+			transferParams := &stripe.TransferParams{
+				Amount:        stripe.Int64(300),
+				Currency:      stripe.String(string(stripe.CurrencyUSD)),
+				Destination:   stripe.String(userStripeAccount),
+				TransferGroup: stripe.String(podSelector),
+			}
+
+			transferParams.AddMetadata("userSelector", userSelector)
+
+			tr, _ := transfer.New(transferParams)
+			log.Println(tr)
+
+			metadataKey := "transfer_id" + strconv.Itoa(i)
+			chargeParams.AddMetadata(metadataKey, tr.ID)
+		}
+
+		// chargeParams will have "transfer_id0", "transfer_id1", etc
+
+		// update
+		ch, _ := charge.Update(
+			c.ID,
+			chargeParams,
+		)
+
+		log.Println(ch)
+	}
+
+	return c.String(http.StatusOK, "Success!")
+}
+
 type ChargeList struct {
 	Amount int64  `json:"amount"`
 	ID     string `json:"id"`
@@ -279,13 +339,13 @@ type ChargeList struct {
 func GetPodChargeList(c echo.Context) error {
 
 	// get from params
-	podSelector := c.Param("podSelector")
+	// podSelector := c.Param("podSelector")
 
 	log.Println("GetPodCharges")
 	stripe.Key = getStripeKey()
 
 	params := &stripe.ChargeListParams{
-		TransferGroup: stripe.String(podSelector),
+		// TransferGroup: stripe.String(podSelector),
 	}
 
 	charges := []*stripe.Charge{}

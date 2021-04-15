@@ -74,8 +74,8 @@ func SendInvite(c echo.Context) error {
 func SendEmail(senderName string, email string, inviteCode string) {
 	m := mail.NewV3Mail()
 
-	address := "invited@divvy.com"
-	name := "Divvy Dally"
+	address := "invited@jamwallet.com"
+	name := "Jamwallet"
 	e := mail.NewEmail(name, address)
 	m.SetFrom(e)
 

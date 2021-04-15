@@ -99,15 +99,25 @@ func AvatarToArray(avatar Avatar) []uint {
 }
 
 func BuildUser(user User) UserAPI {
-	avatar := Avatar{}
-	DB.Where("user_id = ?", user.ID).Find(&avatar)
-
 	return UserAPI{
 		DisplayName: user.DisplayName,
 		Username:    user.Username,
 		Selector:    user.Selector,
 		City:        user.City,
-		Avatar:      AvatarToArray(avatar),
+		Avatar:      AvatarToArray(user.Avatar),
+	}
+}
+
+// build user from collaborator
+func BuildUserFromCollaborator(collaborator Collaborator) CollaboratorAPI {
+	u := collaborator.User
+	return CollaboratorAPI{
+		DisplayName: u.DisplayName,
+		Username:    u.Username,
+		Selector:    collaborator.Selector,
+		City:        u.City,
+		IsAdmin:     collaborator.IsAdmin,
+		Avatar:      AvatarToArray(u.Avatar),
 	}
 }
 

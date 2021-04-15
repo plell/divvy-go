@@ -58,7 +58,7 @@ func Login(c echo.Context) error {
 	user := User{}
 
 	// Check in your db if the user exists or not
-	result := DB.Where("username = ?", creds.Username).First(&user)
+	result := DB.Preload("Avatar").Where("username = ?", creds.Username).First(&user)
 
 	if result.Error != nil {
 		return echo.ErrUnauthorized
