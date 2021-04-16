@@ -169,8 +169,14 @@ type CheckoutSessionRequest struct {
 	Currency    string `json:"currency"`
 }
 
-func CreateCheckoutSession(c echo.Context) (err error) {
+func CreateCheckoutSession(c echo.Context) error {
+	log.Println("CreateCheckoutSession")
 	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c)
+	}
+
+	log.Println("GOT TOKEN")
 
 	// here decode the pod selector and include it in TRANSFER GROUP
 	request := CheckoutSessionRequest{}
@@ -180,6 +186,8 @@ func CreateCheckoutSession(c echo.Context) (err error) {
 		return c.String(http.StatusInternalServerError, "no good")
 	}
 
+	log.Println("GOT REQUEST")
+
 	// get pod
 	pod := Pod{}
 	result := DB.Where("selector = ?", request.PodSelector).First(&pod)
@@ -187,7 +195,7 @@ func CreateCheckoutSession(c echo.Context) (err error) {
 		return c.String(http.StatusInternalServerError, "Pod doesn't exist.")
 	}
 
-	transferGroup := MakeSelector("TRANSFER_GROUP")
+	transferGroup := pod.Selector
 
 	stripe.Key = getStripeKey()
 	params := &stripe.CheckoutSessionParams{
@@ -201,7 +209,7 @@ func CreateCheckoutSession(c echo.Context) (err error) {
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			&stripe.CheckoutSessionLineItemParams{
 				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
-					Currency: stripe.String(request.Currency),
+					Currency: stripe.String("USD"),
 					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
 						Name: stripe.String("Sale"),
 					},
@@ -210,8 +218,8 @@ func CreateCheckoutSession(c echo.Context) (err error) {
 				Quantity: stripe.Int64(1),
 			},
 		},
-		SuccessURL: stripe.String("https://example.com/success"),
-		CancelURL:  stripe.String("https://example.com/cancel"),
+		SuccessURL: stripe.String("https://jamwallet.store/success"),
+		CancelURL:  stripe.String("https://jamwallet.store/fail"),
 	}
 
 	// add user selector to metadata if available
@@ -221,11 +229,16 @@ func CreateCheckoutSession(c echo.Context) (err error) {
 		params.AddMetadata("userSelector", user.Selector)
 	}
 
-	session, _ := session.New(params)
+	log.Println("GOT USER")
+
+	session, err := session.New(params)
 
 	if err != nil {
-		return err
+		// return c.Error(err)
+		return echo.NewHTTPError(http.StatusUnauthorized, err)
 	}
+
+	log.Println("MADE SESSION")
 
 	data := CreateCheckoutSessionResponse{
 		SessionID: session.ID,

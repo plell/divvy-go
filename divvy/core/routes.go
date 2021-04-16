@@ -39,6 +39,7 @@ func MakeRoutes(e *echo.Echo) {
 	r.DELETE("/collaborator/:selector", DeleteCollaborator)
 
 	r.POST("/stripe/account", LinkStripeAccount)
+	r.POST("/stripe/checkoutsession", CreateCheckoutSession)
 	r.POST("/stripe/transfer", CreateTransfer)
 	r.GET("/stripe/transferlist/:podSelector", GetPodTransferList)
 	// we may not be able to get payouts for individual accounts...
