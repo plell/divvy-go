@@ -218,8 +218,8 @@ func CreateCheckoutSession(c echo.Context) error {
 				Quantity: stripe.Int64(1),
 			},
 		},
-		SuccessURL: stripe.String("https://jamwallet.store/success"),
-		CancelURL:  stripe.String("https://jamwallet.store/fail"),
+		SuccessURL: stripe.String("https://jamwallet.store/#/success"),
+		CancelURL:  stripe.String("https://jamwallet.store/#/fail"),
 	}
 
 	// add user selector to metadata if available
