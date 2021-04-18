@@ -211,10 +211,10 @@ func JoinPod(c echo.Context) error {
 		return AbstractError(c)
 	}
 
-	if user.Username != invite.Email {
-		// this code was made for a different user
-		return AbstractError(c)
-	}
+	// if user.Username != invite.Email {
+	// 	// this code was made for a different user
+	// 	return AbstractError(c)
+	// }
 
 	collaborator := Collaborator{
 		UserID:   user_id,
@@ -236,28 +236,16 @@ func JoinPod(c echo.Context) error {
 }
 
 func GetInvites(c echo.Context) error {
-	user_id, err := GetUserIdFromToken(c)
-	if err != nil {
-		return AbstractError(c)
-	}
+	// user_id, err := GetUserIdFromToken(c)
+	// if err != nil {
+	// 	return AbstractError(c)
+	// }
 
 	podSelector := c.Param("podSelector")
 
 	pod := Pod{}
 	result := DB.Where("selector = ?", podSelector).Find(&pod)
 	if result.Error != nil {
-		return AbstractError(c)
-	}
-
-	// make sure this user is an admin of pod
-	collaborator := Collaborator{}
-	result = DB.Where("pod_id = ?", pod.ID).Where("user_id = ?", user_id).First(&collaborator)
-	if result.Error != nil {
-		return AbstractError(c)
-	}
-
-	if collaborator.IsAdmin == true {
-		// not authorized
 		return AbstractError(c)
 	}
 
