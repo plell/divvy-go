@@ -41,6 +41,7 @@ func MakeRoutes(e *echo.Echo) {
 	r.POST("/stripe/account", LinkStripeAccount)
 	r.POST("/stripe/checkoutsession", CreateCheckoutSession)
 	r.POST("/stripe/transfer", CreateTransfer)
+	r.POST("/stripe/refund/:txnId", CreateRefund)
 	r.GET("/stripe/transferlist/:podSelector", GetPodTransferList)
 	// we may not be able to get payouts for individual accounts...
 	r.GET("/stripe/payoutlist/:podSelector", GetPodPayoutList)

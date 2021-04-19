@@ -31,6 +31,8 @@ func main() {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 
+	e.IPExtractor = echo.ExtractIPFromXFFHeader()
+
 	// Make Routes
 	core.MakeRoutes(e)
 	// DB connect

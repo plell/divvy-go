@@ -41,10 +41,21 @@ func GetSigningKey() []byte {
 	return mySigningKey
 }
 
+func MakeLoginHistory(username string, ip string, success bool) {
+	lh := LoginHistory{
+		IP:       ip,
+		Username: username,
+		Success:  success,
+	}
+
+	DB.Create(&lh)
+}
+
 // Most of the code is taken from the echo guide
 // https://echo.labstack.com/cookbook/jwt
 func Login(c echo.Context) error {
 	mySigningKey := GetSigningKey()
+	ip := c.RealIP()
 
 	// bind json to the login variable
 	creds := Credentials{}
@@ -61,11 +72,14 @@ func Login(c echo.Context) error {
 	result := DB.Preload("Avatar").Where("username = ?", creds.Username).First(&user)
 
 	if result.Error != nil {
+		MakeLoginHistory(creds.Username, ip, false)
 		return echo.ErrUnauthorized
 	}
 
 	// Check if password is correct
 	if comparePasswords(user.Password, creds.Password) == false {
+		// logged failed login
+		MakeLoginHistory(creds.Username, ip, false)
 		return echo.ErrUnauthorized
 	}
 
@@ -90,6 +104,8 @@ func Login(c echo.Context) error {
 	response := LoginResponse{
 		Token: t,
 		User:  formatUser}
+
+	MakeLoginHistory(creds.Username, ip, true)
 
 	return c.JSON(http.StatusOK, response)
 

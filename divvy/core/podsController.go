@@ -211,11 +211,6 @@ func JoinPod(c echo.Context) error {
 		return AbstractError(c)
 	}
 
-	// if user.Username != invite.Email {
-	// 	// this code was made for a different user
-	// 	return AbstractError(c)
-	// }
-
 	collaborator := Collaborator{
 		UserID:   user_id,
 		PodID:    invite.PodID,

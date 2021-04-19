@@ -10,6 +10,7 @@ func MigrateUp() {
 		&Selector{},
 		&Payment{},
 		&Invite{},
+		&LoginHistory{},
 	)
 }
 

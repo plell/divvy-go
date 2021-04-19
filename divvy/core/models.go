@@ -4,7 +4,23 @@ import (
 	"gorm.io/gorm"
 )
 
+type ByTheBy struct {
+	DeletedByID uint `json:"deleted_by_id"`
+	CreatedByID uint `json:"created_by_id"`
+	UpdatedByID uint `json:"updated_by_id"`
+}
+
 // gorm.Model injects id, deleted_at, created_at, and updated_at
+var LOGIN_HISTORY_TABLE = "login_histories"
+
+type LoginHistory struct {
+	Username string `json:"username"`
+	IP       string `json:"ip"`
+	Success  bool   `json:"success"`
+	ByTheBy
+	gorm.Model
+}
+
 var USER_TABLE = "users"
 
 type User struct {
@@ -13,9 +29,11 @@ type User struct {
 	City          string        `json:"city"`
 	Password      string        `gorm:"varchar(70)" json:"password"`
 	Selector      string        `json:"selector"`
+	Verified      uint          `json:"verified"` // unix timestamp of when verified
 	Avatar        Avatar        //`gorm:"PRELOAD"` //`gorm:"ForeignKey:ID;AssociationForeignKey:UserID"`
 	StripeAccount StripeAccount //`gorm:"PRELOAD:false"`
 	Collaborator  []Collaborator
+	ByTheBy
 	gorm.Model
 }
 
@@ -34,6 +52,7 @@ type StripeAccount struct {
 	AcctID   string `json:"acctId"`
 	Selector string `json:"selector"`
 	gorm.Model
+	ByTheBy
 }
 type StripeAccountAPI struct {
 	AcctID   string `json:"acctId"`
@@ -55,6 +74,7 @@ type Avatar struct {
 	Feature9 uint   `json:"feature9"`
 	Selector string `json:"selector"`
 	gorm.Model
+	ByTheBy
 }
 type AvatarAPI struct {
 	Feature1 uint   `json:"feature1"`
@@ -81,6 +101,7 @@ type Collaborator struct {
 	Selector string  `json:"selector"`
 	Claim    float64 `json:"claim"`
 	gorm.Model
+	ByTheBy
 }
 type CollaboratorAPI struct {
 	IsAdmin     bool    `json:"isAdmin"`
@@ -101,6 +122,7 @@ type Pod struct {
 	UserID      uint   `json:"userId"`
 	Selector    string `json:"selector"`
 	gorm.Model
+	ByTheBy
 }
 type PodAPI struct {
 	ID          uint   `json:"id"`
@@ -116,6 +138,7 @@ type Selector struct {
 	Selector string `json:"selector"`
 	Type     string `json:"type"`
 	gorm.Model
+	ByTheBy
 }
 
 var PAYMENT_TABLE = "payments"
@@ -126,12 +149,11 @@ type Payment struct {
 	TransferGroup string `json:"transferGroup"`
 	Status        uint   `json:"status"`
 	SessionID     string `json:"sessionId"`
-	User          User
-	UserID        uint `json:"userId"`
 	Pod           Pod
 	PodID         uint   `json:"PodId"`
 	Selector      string `json:"selector"`
 	gorm.Model
+	ByTheBy
 }
 type PaymentAPI struct {
 	ID       uint   `json:"id"`
@@ -150,6 +172,7 @@ type Invite struct {
 	CreatedByID uint   `json:"createdById"`
 	Selector    string `json:"selector"`
 	gorm.Model
+	ByTheBy
 }
 
 type InviteAPI struct {

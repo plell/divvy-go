@@ -16,6 +16,7 @@ import (
 	"github.com/stripe/stripe-go/v72/charge"
 	"github.com/stripe/stripe-go/v72/checkout/session"
 	"github.com/stripe/stripe-go/v72/payout"
+	"github.com/stripe/stripe-go/v72/refund"
 	"github.com/stripe/stripe-go/v72/transfer"
 	"github.com/stripe/stripe-go/v72/webhook"
 )
@@ -170,29 +171,24 @@ type CheckoutSessionRequest struct {
 }
 
 func CreateCheckoutSession(c echo.Context) error {
-	log.Println("CreateCheckoutSession")
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
 		return AbstractError(c)
 	}
-
-	log.Println("GOT TOKEN")
 
 	// here decode the pod selector and include it in TRANSFER GROUP
 	request := CheckoutSessionRequest{}
 	defer c.Request().Body.Close()
 	err = json.NewDecoder(c.Request().Body).Decode(&request)
 	if err != nil {
-		return c.String(http.StatusInternalServerError, "no good")
+		return c.String(http.StatusInternalServerError, "can't decode request")
 	}
-
-	log.Println("GOT REQUEST")
 
 	// get pod
 	pod := Pod{}
 	result := DB.Where("selector = ?", request.PodSelector).First(&pod)
 	if result.Error != nil {
-		return c.String(http.StatusInternalServerError, "Pod doesn't exist.")
+		return c.String(http.StatusInternalServerError, "no pod!")
 	}
 
 	transferGroup := pod.Selector
@@ -225,11 +221,19 @@ func CreateCheckoutSession(c echo.Context) error {
 	// add user selector to metadata if available
 	user := User{}
 	result = DB.First(&user, user_id)
-	if result.Error == nil {
-		params.AddMetadata("userSelector", user.Selector)
+	if result.Error != nil {
+		return c.String(http.StatusInternalServerError, "no user")
 	}
 
-	log.Println("GOT USER")
+	collaborator := Collaborator{}
+	result = DB.Where("user_id = ?", user_id).Where("pod_id = ?", pod.ID).First(&collaborator)
+	if result.Error != nil {
+		return c.String(http.StatusInternalServerError, "no collaborator")
+	}
+
+	params.AddMetadata("userSelector", user.Selector)
+	params.AddMetadata("podSelector", pod.Selector)
+	params.AddMetadata("collaboratorSelector", collaborator.Selector)
 
 	session, err := session.New(params)
 
@@ -237,8 +241,6 @@ func CreateCheckoutSession(c echo.Context) error {
 		// return c.Error(err)
 		return echo.NewHTTPError(http.StatusUnauthorized, err)
 	}
-
-	log.Println("MADE SESSION")
 
 	data := CreateCheckoutSessionResponse{
 		SessionID: session.ID,
@@ -352,13 +354,12 @@ type ChargeList struct {
 func GetPodChargeList(c echo.Context) error {
 
 	// get from params
-	// podSelector := c.Param("podSelector")
+	podSelector := c.Param("podSelector")
 
-	log.Println("GetPodCharges")
 	stripe.Key = getStripeKey()
 
 	params := &stripe.ChargeListParams{
-		// TransferGroup: stripe.String(podSelector),
+		TransferGroup: stripe.String(podSelector),
 	}
 
 	charges := []*stripe.Charge{}
@@ -415,6 +416,21 @@ func GetPodTransferList(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, transfers)
+}
+
+func CreateRefund(c echo.Context) error {
+
+	// get from params
+	log.Println("CreateRefund")
+	txnId := c.Param("txnId")
+	stripe.Key = getStripeKey()
+
+	params := &stripe.RefundParams{
+		Charge: stripe.String(txnId),
+	}
+	r, _ := refund.New(params)
+
+	return c.JSON(http.StatusOK, r)
 }
 
 // testing
