@@ -13,12 +13,29 @@ import (
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
+var SENDGRID_INVITE_TEMPLATE = "d-4416cc09847445c9867d1e9d3cf09dcc"
+var SENDGRID_PW_RESET_TEMPLATE = "d-4416cc09847445c9867d1e9d3cf09dcc"
+
+func SendPasswordReset(c echo.Context) error {
+	// username := c.Param("username")
+
+	// user := User{}
+
+	// result := DB.Where("username = ?", username).First(&user)
+
+	// if result.Error != nil {
+
+	// 	SendPasswordResetEmail(user.DisplayName, req.Email, code)
+	// }
+
+	// always return success, to avoid letting people fish for accounts
+	return c.String(http.StatusOK, "Success!")
+}
+
 type InviteCreator struct {
 	Email       string `json:"email"`
 	PodSelector string `json:"podSelector"`
 }
-
-var SENDGRID_INVITE_TEMPLATE = "d-4416cc09847445c9867d1e9d3cf09dcc"
 
 func SendInvite(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
@@ -66,12 +83,48 @@ func SendInvite(c echo.Context) error {
 		return AbstractError(c)
 	}
 
-	SendEmail(user.DisplayName, req.Email, code)
+	SendInviteEmail(user.DisplayName, req.Email, code)
 
 	return c.String(http.StatusOK, "Success!")
 }
 
-func SendEmail(senderName string, email string, inviteCode string) {
+func SendInviteEmail(senderName string, email string, inviteCode string) {
+	m := mail.NewV3Mail()
+
+	address := "invited@jamwallet.com"
+	name := "Jamwallet"
+	e := mail.NewEmail(name, address)
+	m.SetFrom(e)
+
+	m.SetTemplateID(SENDGRID_INVITE_TEMPLATE)
+
+	p := mail.NewPersonalization()
+	tos := []*mail.Email{
+		mail.NewEmail("", email),
+	}
+
+	p.AddTos(tos...)
+
+	p.SetDynamicTemplateData("inviteCode", inviteCode)
+	p.SetDynamicTemplateData("senderName", senderName)
+
+	m.AddPersonalizations(p)
+
+	request := sendgrid.GetRequest(os.Getenv("SENDGRID_API_KEY"), "/v3/mail/send", "https://api.sendgrid.com")
+	request.Method = "POST"
+	var Body = mail.GetRequestBody(m)
+	request.Body = Body
+	response, err := sendgrid.API(request)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println(response.StatusCode)
+		fmt.Println(response.Body)
+		fmt.Println(response.Headers)
+	}
+}
+
+func SendPasswordResetEmail(senderName string, email string, inviteCode string) {
 	m := mail.NewV3Mail()
 
 	address := "invited@jamwallet.com"

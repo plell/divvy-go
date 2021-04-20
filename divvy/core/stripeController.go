@@ -184,19 +184,42 @@ func CreateCheckoutSession(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "can't decode request")
 	}
 
-	// get pod
+	// get pod for metadata
 	pod := Pod{}
 	result := DB.Where("selector = ?", request.PodSelector).First(&pod)
 	if result.Error != nil {
-		return c.String(http.StatusInternalServerError, "no pod!")
+		return c.String(http.StatusInternalServerError, "no pod")
+	}
+
+	// add user selector to metadata for metadata
+	user := User{}
+	result = DB.First(&user, user_id)
+	if result.Error != nil {
+		return c.String(http.StatusInternalServerError, "no user")
+	}
+
+	// get collaborator for metadata
+	collaborator := Collaborator{}
+	result = DB.Where("user_id = ?", user_id).Where("pod_id = ?", pod.ID).First(&collaborator)
+	if result.Error != nil {
+		return c.String(http.StatusInternalServerError, "no collaborator")
 	}
 
 	transferGroup := pod.Selector
+
+	var metaDataPack map[string]string
+
+	metaDataPack = make(map[string]string)
+
+	metaDataPack["userSelector"] = user.Selector
+	metaDataPack["podSelector"] = pod.Selector
+	metaDataPack["collaboratorSelector"] = collaborator.Selector
 
 	stripe.Key = getStripeKey()
 	params := &stripe.CheckoutSessionParams{
 		PaymentIntentData: &stripe.CheckoutSessionPaymentIntentDataParams{
 			TransferGroup: stripe.String(transferGroup),
+			Metadata:      metaDataPack,
 		},
 		PaymentMethodTypes: stripe.StringSlice([]string{
 			"card",
@@ -218,19 +241,6 @@ func CreateCheckoutSession(c echo.Context) error {
 		CancelURL:  stripe.String("https://jamwallet.store/#/fail"),
 	}
 
-	// add user selector to metadata if available
-	user := User{}
-	result = DB.First(&user, user_id)
-	if result.Error != nil {
-		return c.String(http.StatusInternalServerError, "no user")
-	}
-
-	collaborator := Collaborator{}
-	result = DB.Where("user_id = ?", user_id).Where("pod_id = ?", pod.ID).First(&collaborator)
-	if result.Error != nil {
-		return c.String(http.StatusInternalServerError, "no collaborator")
-	}
-
 	params.AddMetadata("userSelector", user.Selector)
 	params.AddMetadata("podSelector", pod.Selector)
 	params.AddMetadata("collaboratorSelector", collaborator.Selector)
@@ -245,19 +255,6 @@ func CreateCheckoutSession(c echo.Context) error {
 	data := CreateCheckoutSessionResponse{
 		SessionID: session.ID,
 	}
-
-	// here we'll create a row in the db to show the initialized transaction,
-	// we'll finalize the db record in the stripe hook, after its been confirmed
-	payment := Payment{
-		PodID:         pod.ID,
-		Status:        0,
-		Amount:        request.Amount,
-		Currency:      request.Currency,
-		TransferGroup: transferGroup,
-		SessionID:     session.ID,
-		Selector:      MakeSelector(PAYMENT_TABLE),
-	}
-	DB.Create(&payment)
 
 	return c.JSON(http.StatusOK, data)
 }

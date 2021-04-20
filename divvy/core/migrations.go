@@ -8,7 +8,6 @@ func MigrateUp() {
 		&Collaborator{},
 		&Pod{},
 		&Selector{},
-		&Payment{},
 		&Invite{},
 		&LoginHistory{},
 	)

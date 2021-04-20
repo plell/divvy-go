@@ -24,15 +24,17 @@ type LoginHistory struct {
 var USER_TABLE = "users"
 
 type User struct {
-	DisplayName   string        `json:"displayName"`
-	Username      string        `json:"username"`
-	City          string        `json:"city"`
-	Password      string        `gorm:"varchar(70)" json:"password"`
-	Selector      string        `json:"selector"`
-	Verified      uint          `json:"verified"` // unix timestamp of when verified
-	Avatar        Avatar        //`gorm:"PRELOAD"` //`gorm:"ForeignKey:ID;AssociationForeignKey:UserID"`
-	StripeAccount StripeAccount //`gorm:"PRELOAD:false"`
-	Collaborator  []Collaborator
+	DisplayName         string        `json:"displayName"`
+	Username            string        `gorm:"type:varchar(100);unique_index" json:"username"`
+	City                string        `json:"city"`
+	Password            string        `json:"password"`
+	PasswordResetToken  string        `json:"passwordResetToken"`
+	PasswordLastChanged uint          `json:"passwordLastChanged"` // unix timestamp of when verified
+	Selector            string        `json:"selector"`
+	Verified            uint          `json:"verified"` // unix timestamp of when verified
+	Avatar              Avatar        //`gorm:"PRELOAD"` //`gorm:"ForeignKey:ID;AssociationForeignKey:UserID"`
+	StripeAccount       StripeAccount //`gorm:"PRELOAD:false"`
+	Collaborator        []Collaborator
 	ByTheBy
 	gorm.Model
 }
@@ -139,27 +141,6 @@ type Selector struct {
 	Type     string `json:"type"`
 	gorm.Model
 	ByTheBy
-}
-
-var PAYMENT_TABLE = "payments"
-
-type Payment struct {
-	Amount        int64  `json:"amount"`
-	Currency      string `json:"currency"`
-	TransferGroup string `json:"transferGroup"`
-	Status        uint   `json:"status"`
-	SessionID     string `json:"sessionId"`
-	Pod           Pod
-	PodID         uint   `json:"PodId"`
-	Selector      string `json:"selector"`
-	gorm.Model
-	ByTheBy
-}
-type PaymentAPI struct {
-	ID       uint   `json:"id"`
-	Amount   string `json:"amount"`
-	Currency string `json:"currency"`
-	Selector string `json:"selector"`
 }
 
 var INVITE_TABLE = "invites"

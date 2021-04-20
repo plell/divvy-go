@@ -10,6 +10,7 @@ func MakeRoutes(e *echo.Echo) {
 	e.POST("/login", Login)
 	e.POST("/user", CreateUser)
 	e.POST("/stripe/checkoutSession", CreateCheckoutSession)
+	e.POST("/passwordr/:username", SendPasswordReset)
 
 	mySigningKey := GetSigningKey()
 
@@ -27,7 +28,6 @@ func MakeRoutes(e *echo.Echo) {
 	r.GET("/avatar", GetAvatar)
 	r.GET("/pod/list", GetPodList)
 	r.GET("/pod/:selector", GetPod)
-
 	r.GET("/pod/invitelist/:podSelector", GetInvites)
 	r.POST("/pod", CreatePod)
 	r.POST("/pod/join", JoinPod)
