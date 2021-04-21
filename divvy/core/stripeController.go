@@ -283,19 +283,19 @@ func DoAllChargeTransfersAtInterval() {
 
 	for _, pod := range pods {
 		// get collaborators
-		collaborators := []Collaborator{}
-		DB.Preload("User").Preload("User.StripeAccount").Where("pod_id = ?", pod.ID).Find(&collaborators)
+		colls := []Collaborator{}
+		DB.Preload("User").Preload("User.StripeAccount").Where("pod_id = ?", pod.ID).Find(&colls)
 
 		// only transfer to collaborators with stripe accounts
-		readyCollaborators := []Collaborator{}
-		for _, collaborator := range collaborators {
+		collaborators := []Collaborator{}
+		for _, collaborator := range colls {
 			sa := collaborator.User.StripeAccount
 			// get stripe account
 			log.Println("get stripe account")
 			log.Println(sa.AcctID)
 			if sa.AcctID != "" {
 				log.Println("add it!")
-				readyCollaborators = append(readyCollaborators, collaborator)
+				collaborators = append(collaborators, collaborator)
 			}
 		}
 
@@ -313,29 +313,31 @@ func DoAllChargeTransfersAtInterval() {
 			//for each charge, do transfers and update charge metadata
 			if _, ok := c.Metadata["transfers_complete"]; ok {
 				//this charge was transfered! skip it
-				log.Println("this charge was already transferred! SKIP to next charge")
+				log.Println(c.ID + " was already completely transferred! SKIP to next charge")
 				continue
 			}
 
 			chargeParams := &stripe.ChargeParams{}
 
-			applicationFee := int64(25)
+			applicationFee := int64(30)
+			amountAfterAppFee := c.Amount - applicationFee
 
-			for c_i, collaborator := range readyCollaborators {
+			for c_i, collaborator := range collaborators {
 				userSelector := collaborator.User.Selector
 
 				if _, ok := c.Metadata[userSelector]; ok {
 					//this charge was transfered to the user already! skip it
-					log.Println("already transferred to " + userSelector + ", SKIP to next collaborator")
+					log.Println(c.ID + " was already transferred to " + userSelector + ", SKIP to next collaborator")
 					continue
 				}
 				// get collaborator's distribution
 				// transferAmount := getCollaboratorsTransferAmount(c.Amount, int64(collaborator.Distribution))
-				amountAfterAppFee := c.Amount - applicationFee
-				transferAmount := getOnePartTransferAmount(amountAfterAppFee, int64(len(collaborators)))
+				collaboratorDivvy := amountAfterAppFee / int64(len(collaborators))
+				amountAfterAppFee -= collaboratorDivvy
+
 				userStripeAccount := collaborator.User.StripeAccount.AcctID
 				transferParams := &stripe.TransferParams{
-					Amount:        &transferAmount,
+					Amount:        &collaboratorDivvy,
 					Currency:      stripe.String(string(stripe.CurrencyUSD)),
 					Destination:   stripe.String(userStripeAccount),
 					TransferGroup: stripe.String(pod.Selector),
@@ -344,7 +346,7 @@ func DoAllChargeTransfersAtInterval() {
 				// transfer to user stripe account
 				tr, _ := transfer.New(transferParams)
 				log.Println("transferred")
-				log.Println(transferAmount)
+				log.Println(collaboratorDivvy)
 				log.Println("to")
 				log.Println(userStripeAccount)
 
@@ -352,10 +354,9 @@ func DoAllChargeTransfersAtInterval() {
 				metadataKey := userSelector
 				chargeParams.AddMetadata(metadataKey, tr.ID)
 
+				log.Println("compare")
 				log.Println(c_i)
-
-				// FIXME!! gotta make sure transfers_complete is being set at the right time
-				// if last index, set metadata transfers_complete with time as value
+				log.Println(len(collaborators) - 1)
 				if c_i == (len(collaborators) - 1) {
 					t := time.Now().String()
 					chargeParams.AddMetadata("transfers_complete", t)
@@ -364,19 +365,20 @@ func DoAllChargeTransfersAtInterval() {
 				}
 			}
 
-			// after transfers of each charge, update charge with metadata
-			charge.Update(
-				c.ID,
-				chargeParams,
-			)
-
-			log.Println(c.ID)
-			log.Println("charge update done")
+			if chargeParams.Metadata != nil {
+				charge.Update(
+					c.ID,
+					chargeParams,
+				)
+				log.Println(c.ID)
+				log.Println("charge update done")
+			} else {
+				log.Println("ChargeParams IS EMPTY!")
+			}
 		}
-
+		log.Println("ok transfers are done for pod " + fmt.Sprint(pod.ID))
 	}
 
-	log.Println("ok transfers are done")
 }
 
 type ChargeList struct {
@@ -452,11 +454,20 @@ func GetPodTransferList(c echo.Context) error {
 }
 
 func CreateRefund(c echo.Context) error {
+	// StripeWebhook for chargeback and refund, revert transfers for chargeback txn too
 
+	stripe.Key = getStripeKey()
 	// get from params
 	log.Println("CreateRefund")
 	txnId := c.Param("txnId")
-	stripe.Key = getStripeKey()
+	// get charge
+
+	// get pod from PodSelector, and collaborators
+
+	// loop through collaborators, find selector in charge metadata, value is transfer id
+	// if exists, revert the transfer!
+
+	// once transfers have been reverted, finally do the refund
 
 	params := &stripe.RefundParams{
 		Charge: stripe.String(txnId),
