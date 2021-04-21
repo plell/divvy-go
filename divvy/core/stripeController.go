@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stripe/stripe-go/v72"
@@ -228,7 +228,7 @@ func CreateCheckoutSession(c echo.Context) error {
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			&stripe.CheckoutSessionLineItemParams{
 				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
-					Currency: stripe.String("USD"),
+					Currency: stripe.String(string(stripe.CurrencyUSD)),
 					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
 						Name: stripe.String("Sale"),
 					},
@@ -259,88 +259,124 @@ func CreateCheckoutSession(c echo.Context) error {
 	return c.JSON(http.StatusOK, data)
 }
 
-func CreateTransfer(c echo.Context) error {
-	// Create a Transfer to the connected account (later):
-	log.Println("createTransfer")
-	stripe.Key = getStripeKey()
+// func getCollaboratorsTransferAmount(total int64, distribution int64) int64 {
 
-	// Destination: get user stripe account
-	// TransferGroup: get pod selector
-	// transferParams.AddMetadata: get user selector (for listing)
+// 	return 345
+// }
 
-	transferParams := &stripe.TransferParams{
-		Amount:        stripe.Int64(300),
-		Currency:      stripe.String(string(stripe.CurrencyUSD)),
-		Destination:   stripe.String("acct_1IbyRQAAtogj5hWb"),
-		TransferGroup: stripe.String("thisPodSelector"),
-	}
-
-	transferParams.AddMetadata("userSelector", "thisUsersSelector")
-
-	tr, _ := transfer.New(transferParams)
-
-	log.Println(tr)
-
-	return c.String(http.StatusOK, "Success!")
+func getOnePartTransferAmount(totalAmount int64, collaboratorLength int64) int64 {
+	oneTransferAmount := totalAmount / collaboratorLength
+	log.Println("oneTransferAmount")
+	log.Println(oneTransferAmount)
+	return oneTransferAmount
 }
 
-func DoTransfers(c echo.Context) error {
-	// Create a Transfer to the connected account (later):
+// this is a cron job!
+func DoAllChargeTransfersAtInterval() {
 	log.Println("DoTransfers")
 	stripe.Key = getStripeKey()
 
-	// Destination: get user stripe account
-	// TransferGroup: get pod selector
-	// transferParams.AddMetadata: get user selector (for listing)
-	podSelector := c.Param("podSelector")
+	// get all pods, then do a for loop
+	pods := []Pod{}
 
-	// get charges for pod
-	params := &stripe.ChargeListParams{
-		TransferGroup: stripe.String(podSelector),
-	}
+	DB.Find(&pods)
 
-	// params.Filters.AddFilter("limit", "", "3")
-	i := charge.List(params)
-	for i.Next() {
-		c := i.Charge()
-		//for each charge, do transfers and update charge metadata
+	for _, pod := range pods {
 		// get collaborators
-
-		chargeParams := &stripe.ChargeParams{}
-
 		collaborators := []Collaborator{}
-		for i, collaborator := range collaborators {
-			userSelector := collaborator.User.Selector
-			userStripeAccount := collaborator.User.StripeAccount.AcctID
+		DB.Preload("User").Preload("User.StripeAccount").Where("pod_id = ?", pod.ID).Find(&collaborators)
 
-			transferParams := &stripe.TransferParams{
-				Amount:        stripe.Int64(300),
-				Currency:      stripe.String(string(stripe.CurrencyUSD)),
-				Destination:   stripe.String(userStripeAccount),
-				TransferGroup: stripe.String(podSelector),
+		// only transfer to collaborators with stripe accounts
+		readyCollaborators := []Collaborator{}
+		for _, collaborator := range collaborators {
+			sa := collaborator.User.StripeAccount
+			// get stripe account
+			log.Println("get stripe account")
+			log.Println(sa.AcctID)
+			if sa.AcctID != "" {
+				log.Println("add it!")
+				readyCollaborators = append(readyCollaborators, collaborator)
 			}
-
-			transferParams.AddMetadata("userSelector", userSelector)
-
-			tr, _ := transfer.New(transferParams)
-			log.Println(tr)
-
-			metadataKey := "transfer_id" + strconv.Itoa(i)
-			chargeParams.AddMetadata(metadataKey, tr.ID)
 		}
 
-		// chargeParams will have "transfer_id0", "transfer_id1", etc
+		// get charges for pod
+		params := &stripe.ChargeListParams{
+			TransferGroup: stripe.String(pod.Selector),
+		}
 
-		// update
-		ch, _ := charge.Update(
-			c.ID,
-			chargeParams,
-		)
+		// get charges for pod in last 72 hours, or without a TransferDone metadata
+		i := charge.List(params)
 
-		log.Println(ch)
+		// loop through charges
+		for i.Next() {
+			c := i.Charge()
+			//for each charge, do transfers and update charge metadata
+			if _, ok := c.Metadata["transfers_complete"]; ok {
+				//this charge was transfered! skip it
+				log.Println("this charge was already transferred! SKIP to next charge")
+				continue
+			}
+
+			chargeParams := &stripe.ChargeParams{}
+
+			applicationFee := int64(25)
+
+			for c_i, collaborator := range readyCollaborators {
+				userSelector := collaborator.User.Selector
+
+				if _, ok := c.Metadata[userSelector]; ok {
+					//this charge was transfered to the user already! skip it
+					log.Println("already transferred to " + userSelector + ", SKIP to next collaborator")
+					continue
+				}
+				// get collaborator's distribution
+				// transferAmount := getCollaboratorsTransferAmount(c.Amount, int64(collaborator.Distribution))
+				amountAfterAppFee := c.Amount - applicationFee
+				transferAmount := getOnePartTransferAmount(amountAfterAppFee, int64(len(collaborators)))
+				userStripeAccount := collaborator.User.StripeAccount.AcctID
+				transferParams := &stripe.TransferParams{
+					Amount:        &transferAmount,
+					Currency:      stripe.String(string(stripe.CurrencyUSD)),
+					Destination:   stripe.String(userStripeAccount),
+					TransferGroup: stripe.String(pod.Selector),
+				}
+
+				// transfer to user stripe account
+				tr, _ := transfer.New(transferParams)
+				log.Println("transferred")
+				log.Println(transferAmount)
+				log.Println("to")
+				log.Println(userStripeAccount)
+
+				// add user selector key, transfer id to charge
+				metadataKey := userSelector
+				chargeParams.AddMetadata(metadataKey, tr.ID)
+
+				log.Println(c_i)
+
+				// FIXME!! gotta make sure transfers_complete is being set at the right time
+				// if last index, set metadata transfers_complete with time as value
+				if c_i == (len(collaborators) - 1) {
+					t := time.Now().String()
+					chargeParams.AddMetadata("transfers_complete", t)
+					log.Println("set transfers_complete")
+
+				}
+			}
+
+			// after transfers of each charge, update charge with metadata
+			charge.Update(
+				c.ID,
+				chargeParams,
+			)
+
+			log.Println(c.ID)
+			log.Println("charge update done")
+		}
+
 	}
 
-	return c.String(http.StatusOK, "Success!")
+	log.Println("ok transfers are done")
 }
 
 type ChargeList struct {

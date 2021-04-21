@@ -95,24 +95,24 @@ type AvatarAPI struct {
 var COLLABORATOR_TABLE = "collaborators"
 
 type Collaborator struct {
-	User     User
-	UserID   uint `json:"userId"`
-	Pod      Pod
-	PodID    uint    `json:"podId"`
-	IsAdmin  bool    `json:"isAdmin"`
-	Selector string  `json:"selector"`
-	Claim    float64 `json:"claim"`
+	User         User
+	UserID       uint `json:"userId"`
+	Pod          Pod
+	PodID        uint    `json:"podId"`
+	IsAdmin      bool    `json:"isAdmin"`
+	Selector     string  `json:"selector"`
+	Distribution float64 `json:"distribution"`
 	gorm.Model
 	ByTheBy
 }
 type CollaboratorAPI struct {
-	IsAdmin     bool    `json:"isAdmin"`
-	Selector    string  `json:"selector"`
-	Claim       float64 `json:"claim"`
-	DisplayName string  `json:"displayName"`
-	Username    string  `json:"username"`
-	City        string  `json:"city"`
-	Avatar      []uint  `json:"avatar"`
+	IsAdmin      bool    `json:"isAdmin"`
+	Selector     string  `json:"selector"`
+	DisplayName  string  `json:"displayName"`
+	Username     string  `json:"username"`
+	Distribution float64 `json:"distribution"`
+	City         string  `json:"city"`
+	Avatar       []uint  `json:"avatar"`
 }
 
 var POD_TABLE = "pods"
