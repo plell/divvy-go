@@ -5,11 +5,12 @@ func MigrateUp() {
 		&User{},
 		&Avatar{},
 		&StripeAccount{},
-		&Collaborator{},
 		&Pod{},
+		&Collaborator{},
 		&Selector{},
 		&Invite{},
 		&LoginHistory{},
+		&BetaKey{},
 	)
 }
 

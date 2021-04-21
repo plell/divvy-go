@@ -134,24 +134,16 @@ type PodResponse struct {
 
 func GetPod(c echo.Context) error {
 	// get user_id from jwt
-	user_id, err := GetUserIdFromToken(c)
+	// user_id, err := GetUserIdFromToken(c)
 
-	if err != nil {
-		return AbstractError(c)
-	}
+	// if err != nil {
+	// 	return AbstractError(c)
+	// }
 	// get from params
 	selector := c.Param("selector")
 
 	pod := Pod{}
 	result := DB.Where("selector = ?", selector).First(&pod)
-	if result.Error != nil {
-		return AbstractError(c)
-	}
-
-	// make sure this user is part of the collab
-	collaborator := Collaborator{}
-	result = DB.Where("user_id = ?", user_id).Where("pod_id = ?", pod.ID).First(&collaborator)
-
 	if result.Error != nil {
 		return AbstractError(c)
 	}

@@ -34,8 +34,6 @@ type jwtCustomClaims struct {
 	jwt.StandardClaims
 }
 
-var tester = os.Getenv("TESTER")
-
 func GetSigningKey() []byte {
 	mySigningKey := []byte(os.Getenv("JWT_TOKEN"))
 	return mySigningKey

@@ -9,6 +9,11 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+var STRIPE_FLAT_FEE = 30.00   // 30 cents
+var STRIPE_PERCENT_FEE = .029 // 2.9 percent
+var JAM_FLAT_FEE = 30.00      // 30 cents
+var JAM_PERCENT_FEE = .06     // 6 percent
+
 func Pong(c echo.Context) error {
 	return c.String(http.StatusOK, "Pong")
 }

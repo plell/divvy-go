@@ -17,6 +17,7 @@ import (
 	"github.com/stripe/stripe-go/v72/checkout/session"
 	"github.com/stripe/stripe-go/v72/payout"
 	"github.com/stripe/stripe-go/v72/refund"
+	"github.com/stripe/stripe-go/v72/reversal"
 	"github.com/stripe/stripe-go/v72/transfer"
 	"github.com/stripe/stripe-go/v72/webhook"
 )
@@ -65,6 +66,47 @@ func GetStripeAccount(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, acct)
+}
+
+func getTotalAmountAfterFees(amount int64) int64 {
+	stripeFees := calcStripeFees(amount)
+	jamFees := calcJamFees(amount)
+
+	amountMinusFees := amount - stripeFees - jamFees
+
+	log.Println("getTotalAmountAfterFees")
+	log.Println("total")
+	log.Println(amount)
+	log.Println("stripeFees")
+	log.Println(stripeFees)
+	log.Println("jamFees")
+	log.Println(jamFees)
+	log.Println("amountMinusFees")
+	log.Println(amountMinusFees)
+
+	return amountMinusFees
+}
+
+func calcStripeFees(fullamount int64) int64 {
+	// amount = 6000
+	a := float64(fullamount)
+	percentFee := a * STRIPE_PERCENT_FEE
+	flatFee := STRIPE_FLAT_FEE
+
+	totalFee := percentFee + flatFee
+
+	return int64(totalFee)
+}
+
+func calcJamFees(fullamount int64) int64 {
+	// amount = 6000
+	a := float64(fullamount)
+	percentFee := a * JAM_PERCENT_FEE
+	flatFee := JAM_FLAT_FEE
+
+	totalFee := percentFee + flatFee
+
+	return int64(totalFee)
 }
 
 func LinkStripeAccount(c echo.Context) error {
@@ -259,16 +301,11 @@ func CreateCheckoutSession(c echo.Context) error {
 	return c.JSON(http.StatusOK, data)
 }
 
-// func getCollaboratorsTransferAmount(total int64, distribution int64) int64 {
-
-// 	return 345
-// }
-
-func getOnePartTransferAmount(totalAmount int64, collaboratorLength int64) int64 {
-	oneTransferAmount := totalAmount / collaboratorLength
-	log.Println("oneTransferAmount")
-	log.Println(oneTransferAmount)
-	return oneTransferAmount
+func getCollaboratorTransferAmount(amountAfterFees int64, collaboratorLength int64) int64 {
+	transferAmount := amountAfterFees / collaboratorLength
+	log.Println("transferAmount per collaborator")
+	log.Println(transferAmount)
+	return transferAmount
 }
 
 // this is a cron job!
@@ -291,10 +328,7 @@ func DoAllChargeTransfersAtInterval() {
 		for _, collaborator := range colls {
 			sa := collaborator.User.StripeAccount
 			// get stripe account
-			log.Println("get stripe account")
-			log.Println(sa.AcctID)
 			if sa.AcctID != "" {
-				log.Println("add it!")
 				collaborators = append(collaborators, collaborator)
 			}
 		}
@@ -310,6 +344,12 @@ func DoAllChargeTransfersAtInterval() {
 		// loop through charges
 		for i.Next() {
 			c := i.Charge()
+
+			// dont transfer refunded transactions!
+			if c.Refunded {
+				continue
+			}
+
 			//for each charge, do transfers and update charge metadata
 			if _, ok := c.Metadata["transfers_complete"]; ok {
 				//this charge was transfered! skip it
@@ -318,9 +358,8 @@ func DoAllChargeTransfersAtInterval() {
 			}
 
 			chargeParams := &stripe.ChargeParams{}
-
-			applicationFee := int64(30)
-			amountAfterAppFee := c.Amount - applicationFee
+			amountAfterFees := getTotalAmountAfterFees(c.Amount)
+			collaboratorTransferAmount := getCollaboratorTransferAmount(amountAfterFees, int64(len(collaborators)))
 
 			for c_i, collaborator := range collaborators {
 				userSelector := collaborator.User.Selector
@@ -330,23 +369,28 @@ func DoAllChargeTransfersAtInterval() {
 					log.Println(c.ID + " was already transferred to " + userSelector + ", SKIP to next collaborator")
 					continue
 				}
-				// get collaborator's distribution
-				// transferAmount := getCollaboratorsTransferAmount(c.Amount, int64(collaborator.Distribution))
-				collaboratorDivvy := amountAfterAppFee / int64(len(collaborators))
-				amountAfterAppFee -= collaboratorDivvy
+
+				// when not an even distribution, calc collaboratorTransferAmount here
 
 				userStripeAccount := collaborator.User.StripeAccount.AcctID
 				transferParams := &stripe.TransferParams{
-					Amount:        &collaboratorDivvy,
+					Amount:        &collaboratorTransferAmount,
 					Currency:      stripe.String(string(stripe.CurrencyUSD)),
 					Destination:   stripe.String(userStripeAccount),
 					TransferGroup: stripe.String(pod.Selector),
 				}
 
 				// transfer to user stripe account
-				tr, _ := transfer.New(transferParams)
+				tr, err := transfer.New(transferParams)
+
+				if err != nil {
+					log.Println("you got an error!")
+					log.Println(err)
+					continue
+				}
+
 				log.Println("transferred")
-				log.Println(collaboratorDivvy)
+				log.Println(collaboratorTransferAmount)
 				log.Println("to")
 				log.Println(userStripeAccount)
 
@@ -354,14 +398,10 @@ func DoAllChargeTransfersAtInterval() {
 				metadataKey := userSelector
 				chargeParams.AddMetadata(metadataKey, tr.ID)
 
-				log.Println("compare")
-				log.Println(c_i)
-				log.Println(len(collaborators) - 1)
 				if c_i == (len(collaborators) - 1) {
 					t := time.Now().String()
 					chargeParams.AddMetadata("transfers_complete", t)
 					log.Println("set transfers_complete")
-
 				}
 			}
 
@@ -372,13 +412,10 @@ func DoAllChargeTransfersAtInterval() {
 				)
 				log.Println(c.ID)
 				log.Println("charge update done")
-			} else {
-				log.Println("ChargeParams IS EMPTY!")
 			}
 		}
 		log.Println("ok transfers are done for pod " + fmt.Sprint(pod.ID))
 	}
-
 }
 
 type ChargeList struct {
@@ -460,18 +497,62 @@ func CreateRefund(c echo.Context) error {
 	// get from params
 	log.Println("CreateRefund")
 	txnId := c.Param("txnId")
+
 	// get charge
+	ch, _ := charge.Get(
+		txnId,
+		nil,
+	)
 
+	pod := Pod{}
 	// get pod from PodSelector, and collaborators
+	if _, ok := ch.Metadata["podSelector"]; ok {
+		result := DB.Where("selector = ?", ch.Metadata["podSelector"]).First(&pod)
+		if result.Error != nil {
+			return AbstractError(c)
+		}
+	} else {
+		return AbstractError(c)
+	}
 
-	// loop through collaborators, find selector in charge metadata, value is transfer id
-	// if exists, revert the transfer!
+	collaborators := []Collaborator{}
 
-	// once transfers have been reverted, finally do the refund
+	result := DB.Preload("User").Where("pod_id = ?", pod.ID).Find(&collaborators)
+	if result.Error != nil {
+		return AbstractError(c)
+	}
+
+	for _, clbrtr := range collaborators {
+		transferId := ""
+
+		userSelector := clbrtr.User.Selector
+		// if charge has been transferred to this user, get the transfer id
+		if _, ok := ch.Metadata[userSelector]; ok {
+			transferId = ch.Metadata[userSelector]
+		}
+
+		if transferId != "" {
+			// if transferid exists, get transfer
+			t, _ := transfer.Get(
+				transferId,
+				nil,
+			)
+
+			reversalParams := &stripe.ReversalParams{
+				Amount:   stripe.Int64(t.Amount),
+				Transfer: stripe.String(transferId),
+			}
+			rev, _ := reversal.New(reversalParams)
+			log.Println("reversal succeeded")
+			log.Println(rev.ID)
+			log.Println(t.Amount)
+		}
+	}
 
 	params := &stripe.RefundParams{
 		Charge: stripe.String(txnId),
 	}
+
 	r, _ := refund.New(params)
 
 	return c.JSON(http.StatusOK, r)

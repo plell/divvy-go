@@ -95,9 +95,9 @@ type AvatarAPI struct {
 var COLLABORATOR_TABLE = "collaborators"
 
 type Collaborator struct {
-	User         User
-	UserID       uint `json:"userId"`
-	Pod          Pod
+	User   User
+	UserID uint `json:"userId"`
+	// Pod          Pod
 	PodID        uint    `json:"podId"`
 	IsAdmin      bool    `json:"isAdmin"`
 	Selector     string  `json:"selector"`
@@ -118,11 +118,12 @@ type CollaboratorAPI struct {
 var POD_TABLE = "pods"
 
 type Pod struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	User        User
-	UserID      uint   `json:"userId"`
-	Selector    string `json:"selector"`
+	Name          string `json:"name"`
+	Description   string `json:"description"`
+	User          User
+	UserID        uint   `json:"userId"`
+	Selector      string `json:"selector"`
+	Collaborators []Collaborator
 	gorm.Model
 	ByTheBy
 }
@@ -159,4 +160,12 @@ type Invite struct {
 type InviteAPI struct {
 	Email    string `json:"email"`
 	Selector string `json:"selector"`
+}
+
+var BETA_KEY_TABLE = "beta_keys"
+
+type BetaKey struct {
+	BetaKey string `json:"betaKey"`
+	gorm.Model
+	ByTheBy
 }
