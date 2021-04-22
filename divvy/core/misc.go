@@ -13,8 +13,8 @@ func Pong(c echo.Context) error {
 	return c.String(http.StatusOK, "Pong")
 }
 
-func AbstractError(c echo.Context) error {
-	return c.String(http.StatusInternalServerError, "")
+func AbstractError(c echo.Context, message string) error {
+	return c.String(http.StatusInternalServerError, message)
 }
 
 var pool = "abcdefghijklmnopqrstuvwxyzABCEFGHIJKLMNOPQRSTUVWXYZ1234567890"

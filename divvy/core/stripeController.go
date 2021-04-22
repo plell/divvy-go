@@ -45,7 +45,7 @@ func getStripeKey() string {
 func GetStripeAccount(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	stripeAccount := StripeAccount{}
@@ -63,7 +63,7 @@ func GetStripeAccount(c echo.Context) error {
 	)
 
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	return c.JSON(http.StatusOK, acct)
@@ -113,7 +113,7 @@ func calcJamFees(fullamount int64) int64 {
 func LinkStripeAccount(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	stripe.Key = getStripeKey()
@@ -166,7 +166,7 @@ func LinkStripeAccount(c echo.Context) error {
 		result := DB.Create(&stripeAccount) // pass pointer of data to Create
 
 		if result.Error != nil {
-			return AbstractError(c)
+			return AbstractError(c, "Something went wrong")
 		}
 	} else {
 		// *******************
@@ -216,7 +216,14 @@ type CheckoutSessionRequest struct {
 func CreateCheckoutSession(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
+	}
+
+	// does user have a stripe account?
+	stripeAccount := StripeAccount{}
+	result := DB.Where("user_id = ?", user_id).First(&stripeAccount)
+	if result.Error != nil {
+		return c.String(http.StatusInternalServerError, "no stripe account")
 	}
 
 	// here decode the pod selector and include it in TRANSFER GROUP
@@ -229,7 +236,7 @@ func CreateCheckoutSession(c echo.Context) error {
 
 	// get pod for metadata
 	pod := Pod{}
-	result := DB.Where("selector = ?", request.PodSelector).First(&pod)
+	result = DB.Where("selector = ?", request.PodSelector).First(&pod)
 	if result.Error != nil {
 		return c.String(http.StatusInternalServerError, "no pod")
 	}
@@ -246,6 +253,10 @@ func CreateCheckoutSession(c echo.Context) error {
 	result = DB.Where("user_id = ?", user_id).Where("pod_id = ?", pod.ID).First(&collaborator)
 	if result.Error != nil {
 		return c.String(http.StatusInternalServerError, "no collaborator")
+	}
+
+	if request.Amount < 100 {
+		return c.String(http.StatusInternalServerError, "Amount minimum is 1USD")
 	}
 
 	transferGroup := pod.Selector
@@ -603,7 +614,7 @@ func ScheduleRefund(c echo.Context) error {
 		nil,
 	)
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	params := &stripe.ChargeParams{}
@@ -616,7 +627,7 @@ func ScheduleRefund(c echo.Context) error {
 		params,
 	)
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	log.Println(updatedCharge)

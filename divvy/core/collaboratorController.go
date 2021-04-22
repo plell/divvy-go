@@ -16,7 +16,7 @@ type CollaboratorRoleRequest struct {
 func UpdateCollaboratorAdmin(c echo.Context) error {
 	// user_id, err := GetUserIdFromToken(c)
 	// if err != nil {
-	// 	return AbstractError(c)
+	// 	return AbstractError(c,"Something went wrong")
 	// }
 
 	req := CollaboratorRoleRequest{}
@@ -24,14 +24,15 @@ func UpdateCollaboratorAdmin(c echo.Context) error {
 	err := json.NewDecoder(c.Request().Body).Decode(&req)
 
 	if err != nil {
-		return AbstractError(c)
+		AbstractError(c, "Something went wrong")
+		return AbstractError(c, "Something went wrong")
 	}
 
 	// get request collaborator
 	collaborator := Collaborator{}
 	result := DB.Where("selector = ?", req.Selector).First(&collaborator)
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	log.Println("req")
@@ -48,7 +49,7 @@ func UpdateCollaboratorAdmin(c echo.Context) error {
 func DeleteCollaborator(c echo.Context) error {
 	// user_id, err := GetUserIdFromToken(c)
 	// if err != nil {
-	// 	return AbstractError(c)
+	// 	return AbstractError(c,"Something went wrong")
 	// }
 
 	selector := c.Param("selector")
@@ -59,7 +60,7 @@ func DeleteCollaborator(c echo.Context) error {
 
 	result := DB.Where("selector = ?", selector).Delete(&collaborator)
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	return c.String(http.StatusOK, "Success")
@@ -68,7 +69,7 @@ func DeleteCollaborator(c echo.Context) error {
 func GetCollaboratorList(c echo.Context) error {
 	// user_id, err := GetUserIdFromToken(c)
 	// if err != nil {
-	// 	return AbstractError(c)
+	// 	return AbstractError(c,"Something went wrong")
 	// }
 
 	podSelector := c.Param("podSelector")
@@ -82,7 +83,7 @@ func GetCollaboratorList(c echo.Context) error {
 	result = DB.Preload("User").Preload("User.Avatar").Where("pod_id = ?", pod.ID).Find(&collaborators)
 
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	members := []CollaboratorAPI{}

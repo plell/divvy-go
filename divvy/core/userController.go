@@ -41,7 +41,7 @@ func CreateUser(c echo.Context) error {
 	err := json.NewDecoder(c.Request().Body).Decode(&req)
 
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	hashedPassword := hashAndSalt(req.Password)
@@ -57,7 +57,7 @@ func CreateUser(c echo.Context) error {
 	result := DB.Create(&user) // pass pointer of data to Create
 
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	avatar := Avatar{
@@ -77,7 +77,7 @@ func CreateUser(c echo.Context) error {
 	result = DB.Create(&avatar) // pass pointer of data to Create
 
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	return c.String(http.StatusOK, "Success!")
@@ -86,7 +86,7 @@ func CreateUser(c echo.Context) error {
 func GetUser(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	user := User{}
@@ -94,7 +94,7 @@ func GetUser(c echo.Context) error {
 	result := DB.First(&user, user_id)
 
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	return c.JSON(http.StatusOK, user)
@@ -103,14 +103,14 @@ func GetUser(c echo.Context) error {
 func GetAvatar(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	// find avatar
 	avatar := Avatar{}
 	result := DB.Where("user_id = ?", user_id).First(&avatar)
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	avatarFeatures := AvatarToArray(avatar)
@@ -124,7 +124,7 @@ func GetAvatar(c echo.Context) error {
 func UpdateAvatar(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	// decode request avatar details
@@ -133,24 +133,24 @@ func UpdateAvatar(c echo.Context) error {
 	err = json.NewDecoder(c.Request().Body).Decode(&req)
 
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	avatar := Avatar{}
 	// get avatar by user id
 	result := DB.Where("user_id = ?", user_id).First(&avatar)
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 	// update
 	result = DB.Model(&avatar).Updates(req)
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 	// get updated avatar
 	result = DB.First(&avatar)
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	avatarFeatures := []uint{avatar.Feature1,

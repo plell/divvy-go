@@ -12,7 +12,7 @@ func CreatePod(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	req := Pod{}
@@ -20,7 +20,7 @@ func CreatePod(c echo.Context) error {
 	err = json.NewDecoder(c.Request().Body).Decode(&req)
 
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	pod := Pod{
@@ -33,7 +33,7 @@ func CreatePod(c echo.Context) error {
 	result := DB.Create(&pod) // pass pointer of data to Create
 
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 	// create admin collaborator
 	collaborator := Collaborator{
@@ -46,7 +46,7 @@ func CreatePod(c echo.Context) error {
 	result = DB.Create(&collaborator) // pass pointer of data to Create
 
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	podResponse := PodAPI{
@@ -88,7 +88,7 @@ func GetPodList(c echo.Context) error {
 	// get user_id from jwt
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	// test sending an email
@@ -98,7 +98,7 @@ func GetPodList(c echo.Context) error {
 	collaborators := []Collaborator{}
 	result := DB.Where("user_id = ?", user_id).Find(&collaborators)
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	pods := []Pod{}
@@ -114,7 +114,7 @@ func GetPodList(c echo.Context) error {
 	// SELECT * FROM divvy_pods WHERE id IN (1,2,3);
 	result = DB.Where(podIds).Find(&pods)
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	podsList := []PodAPI{}
@@ -137,15 +137,15 @@ func GetPod(c echo.Context) error {
 	// user_id, err := GetUserIdFromToken(c)
 
 	// if err != nil {
-	// 	return AbstractError(c)
+	// 	return AbstractError(c,"Something went wrong")
 	// }
 	// get from params
-	selector := c.Param("selector")
+	podSelector := c.Param("podSelector")
 
 	pod := Pod{}
-	result := DB.Where("selector = ?", selector).First(&pod)
+	result := DB.Where("selector = ?", podSelector).First(&pod)
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	// get collaborators
@@ -154,7 +154,7 @@ func GetPod(c echo.Context) error {
 	result = DB.Preload("User").Preload("User.Avatar").Where("pod_id = ?", pod.ID).Find(&collaborators)
 
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	members := []CollaboratorAPI{}
@@ -179,7 +179,7 @@ type PodJoiner struct {
 func JoinPod(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	req := PodJoiner{}
@@ -190,17 +190,18 @@ func JoinPod(c echo.Context) error {
 	user := User{}
 	result := DB.First(&user, user_id)
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	invite := Invite{}
 	result = DB.Where("code = ?", req.Code).First(&invite)
 	if result.Error != nil {
-		return AbstractError(c)
+
+		return AbstractError(c, "This code is not valid")
 	}
 
 	collaborator := Collaborator{
@@ -213,7 +214,7 @@ func JoinPod(c echo.Context) error {
 	result = DB.Create(&collaborator)
 
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	// delete the invite, its been used
@@ -225,7 +226,7 @@ func JoinPod(c echo.Context) error {
 func GetInvites(c echo.Context) error {
 	// user_id, err := GetUserIdFromToken(c)
 	// if err != nil {
-	// 	return AbstractError(c)
+	// 	return AbstractError(c,"Something went wrong")
 	// }
 
 	podSelector := c.Param("podSelector")
@@ -233,7 +234,7 @@ func GetInvites(c echo.Context) error {
 	pod := Pod{}
 	result := DB.Where("selector = ?", podSelector).Find(&pod)
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	// get user
@@ -241,7 +242,7 @@ func GetInvites(c echo.Context) error {
 	result = DB.Model(&Invite{}).Where("pod_id = ?", pod.ID).Find(&invites)
 
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	return c.JSON(http.StatusOK, invites)
@@ -250,7 +251,7 @@ func GetInvites(c echo.Context) error {
 func DeleteInvite(c echo.Context) error {
 	// user_id, err := GetUserIdFromToken(c)
 	// if err != nil {
-	// 	return AbstractError(c)
+	// 	return AbstractError(c,"Something went wrong")
 	// }
 
 	selector := c.Param("selector")
@@ -260,7 +261,7 @@ func DeleteInvite(c echo.Context) error {
 
 	result := DB.Where("selector = ?", selector).First(&invite)
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	DB.Delete(&invite)

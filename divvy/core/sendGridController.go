@@ -40,7 +40,7 @@ type InviteCreator struct {
 func SendInvite(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	req := InviteCreator{}
@@ -48,7 +48,7 @@ func SendInvite(c echo.Context) error {
 	err = json.NewDecoder(c.Request().Body).Decode(&req)
 
 	if err != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	// get pod
@@ -56,7 +56,7 @@ func SendInvite(c echo.Context) error {
 	result := DB.Where("selector = ?", req.PodSelector).First(&pod)
 
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	code := MakeInviteCode()
@@ -72,7 +72,7 @@ func SendInvite(c echo.Context) error {
 	result = DB.Create(&invite)
 
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	user := User{}
@@ -80,7 +80,7 @@ func SendInvite(c echo.Context) error {
 	result = DB.First(&user, user_id)
 
 	if result.Error != nil {
-		return AbstractError(c)
+		return AbstractError(c, "Something went wrong")
 	}
 
 	SendInviteEmail(user.DisplayName, req.Email, code)

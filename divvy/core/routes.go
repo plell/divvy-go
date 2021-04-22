@@ -14,42 +14,43 @@ func MakeRoutes(e *echo.Echo) {
 
 	mySigningKey := GetSigningKey()
 
-	// token required group
+	// r: requires token
 	r := e.Group("/a")
 	config := middleware.JWTConfig{
 		Claims:     &jwtCustomClaims{},
 		SigningKey: mySigningKey,
 	}
 	r.Use(middleware.JWTWithConfig(config))
-
 	r.GET("/ping", Pong)
-	r.GET("/user/:userId", GetUser)
+	r.GET("/user", GetUser)
 	r.PATCH("/avatar", UpdateAvatar)
 	r.GET("/avatar", GetAvatar)
 	r.GET("/pod/list", GetPodList)
-	r.GET("/pod/:selector", GetPod)
-	r.GET("/pod/invitelist/:podSelector", GetInvites)
 	r.POST("/pod", CreatePod)
 	r.POST("/pod/join", JoinPod)
-	r.POST("/pod/invite", SendInvite)
-	r.DELETE("/pod/invite/:selector", DeleteInvite)
-
-	r.GET("/collaboratorlist/:podSelector", GetCollaboratorList)
-	r.PATCH("/collaborator/admin", UpdateCollaboratorAdmin)
-	r.DELETE("/collaborator/:selector", DeleteCollaborator)
-
 	r.POST("/stripe/account", LinkStripeAccount)
-	r.POST("/stripe/checkoutsession", CreateCheckoutSession)
-	r.POST("/stripe/refund/:txnId", ScheduleRefund)
-	r.POST("/stripe/refund/cancel/:txnId", CancelScheduledRefund)
-	r.GET("/stripe/transferlist/:podSelector", GetPodTransferList)
-	// we may not be able to get payouts for individual accounts...
-	r.GET("/stripe/payoutlist/:podSelector", GetPodPayoutList)
-	r.GET("/stripe/chargelist/:podSelector", GetPodChargeList)
 	r.GET("/stripe/account", GetStripeAccount)
 
-	// e.POST("/users", createUser)
-	// e.GET("/users/:id", getUser)
-	// e.PUT("/users/:id", updateUser)
-	// e.DELETE("/users/:id", deleteUser)
+	// s: require token, pod collaborator
+	s := r.Group("")
+	s.Use(IsPodMember)
+	s.GET("/pod/:podSelector", GetPod)
+	s.GET("/pod/invitelist/:podSelector", GetInvites)
+	s.GET("/stripe/transferlist/:podSelector", GetPodTransferList)
+	s.GET("/stripe/payoutlist/:podSelector", GetPodPayoutList)
+	s.GET("/stripe/chargelist/:podSelector", GetPodChargeList)
+	s.GET("/collaboratorlist/:podSelector", GetCollaboratorList)
+	s.POST("/pod/invite/:podSelector", SendInvite)
+	s.DELETE("/pod/invite/:podSelector/:selector", DeleteInvite)
+
+	s.PATCH("/collaborator/admin/:podSelector", UpdateCollaboratorAdmin)
+	s.DELETE("/collaborator/:podSelector/:selector", DeleteCollaborator)
+
+	// a: require token, stripe account, pod collaborator
+	a := s.Group("")
+	a.Use(HasStripeAccount)
+	a.POST("/stripe/checkoutsession/:podSelector", CreateCheckoutSession)
+	a.POST("/stripe/refund/:podSelector/:txnId", ScheduleRefund)
+	a.POST("/stripe/refund/cancel/:podSelector/:txnId", CancelScheduledRefund)
+
 }

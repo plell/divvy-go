@@ -47,11 +47,9 @@ func main() {
 	e.GET("/webhook", echo.HandlerFunc(core.HandleStripeWebhook))
 
 	c := cron.New()
-	// c.AddFunc("0 30 * * * *", func() { fmt.Println("Every hour on the half hour") })
-	// c.AddFunc("@hourly", func() { fmt.Println("Every hour") })
-	c.AddFunc("@every 1m", func() {
+	c.AddFunc("@every 10m", func() {
 		core.DoChargeTransfersAndRefundsCron()
-		fmt.Println("Every minute!")
+		fmt.Println("cron ran!")
 	})
 	c.Start()
 
