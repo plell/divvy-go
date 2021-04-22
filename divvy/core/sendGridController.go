@@ -159,3 +159,7 @@ func SendPasswordResetEmail(senderName string, email string, inviteCode string) 
 		fmt.Println(response.Headers)
 	}
 }
+
+func SendRefundLimitEmail(pod Pod) {
+
+}

@@ -50,7 +50,7 @@ func main() {
 	// c.AddFunc("0 30 * * * *", func() { fmt.Println("Every hour on the half hour") })
 	// c.AddFunc("@hourly", func() { fmt.Println("Every hour") })
 	c.AddFunc("@every 1m", func() {
-		core.DoAllChargeTransfersAtInterval()
+		core.DoChargeTransfersAndRefundsCron()
 		fmt.Println("Every minute!")
 	})
 	c.Start()

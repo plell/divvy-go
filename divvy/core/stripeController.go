@@ -309,7 +309,7 @@ func getCollaboratorTransferAmount(amountAfterFees int64, collaboratorLength int
 }
 
 // this is a cron job!
-func DoAllChargeTransfersAtInterval() {
+func DoChargeTransfersAndRefundsCron() {
 	log.Println("DoTransfers")
 	stripe.Key = getStripeKey()
 
@@ -338,16 +338,33 @@ func DoAllChargeTransfersAtInterval() {
 			TransferGroup: stripe.String(pod.Selector),
 		}
 
+		// this array holds refunds to-do,
+		// make sure there are no more than 4 refunds, or else block and email
+		var refundGroup []*stripe.Charge
+		var allCharges []*stripe.Charge
+
 		// get charges for pod in last 72 hours, or without a TransferDone metadata
 		i := charge.List(params)
 
 		// loop through charges
 		for i.Next() {
 			c := i.Charge()
-
+			allCharges = append(allCharges, c)
 			// dont transfer refunded transactions!
 			if c.Refunded {
 				continue
+			}
+
+			// send scheduled refunds to refund
+			if _, ok := c.Metadata["toRefund"]; ok {
+				//this charge is scheduled for refund! send to refund and move on
+				if c.Metadata["toRefund"] != "cancelled" {
+					// add to refund group to process at end of transfers
+					refundGroup = append(refundGroup, c)
+					log.Println("refund scheduled, add to refund group to process at end of transfers " + c.ID)
+					continue
+				}
+				log.Println("refund schedule was cancelled, move toward transfer")
 			}
 
 			//for each charge, do transfers and update charge metadata
@@ -366,7 +383,7 @@ func DoAllChargeTransfersAtInterval() {
 
 				if _, ok := c.Metadata[userSelector]; ok {
 					//this charge was transfered to the user already! skip it
-					log.Println(c.ID + " was already transferred to " + userSelector + ", SKIP to next collaborator")
+					log.Println("already transferred to " + userSelector + ", txnID " + c.ID + ", SKIP to next collaborator")
 					continue
 				}
 
@@ -415,7 +432,84 @@ func DoAllChargeTransfersAtInterval() {
 			}
 		}
 		log.Println("ok transfers are done for pod " + fmt.Sprint(pod.ID))
+		log.Println("do scheduled refunds")
+
+		if refundsAreRisky(refundGroup, allCharges) {
+			// reject! too many refunds
+			SendRefundLimitEmail(pod)
+		} else {
+			// process refunds
+			for _, chargeToRefund := range refundGroup {
+				CreateRefund(chargeToRefund.ID, collaborators)
+			}
+		}
 	}
+}
+
+func refundsAreRisky(refundGroup []*stripe.Charge, allCharges []*stripe.Charge) bool {
+	// look at ratio and risk levels to determine risk here
+	risky := false
+	if len(refundGroup) > REFUND_LIMIT {
+		risky = true
+	}
+	return risky
+}
+
+// internal method only used by cron job to refund scheduled refunds
+func CreateRefund(txnId string, collaborators []Collaborator) {
+
+	log.Println("CreateRefund")
+	stripe.Key = getStripeKey()
+
+	// get charge
+	ch, _ := charge.Get(
+		txnId,
+		nil,
+	)
+
+	for _, clbrtr := range collaborators {
+		transferId := ""
+
+		userSelector := clbrtr.User.Selector
+		// if charge has been transferred to this user, get the transfer id
+		if _, ok := ch.Metadata[userSelector]; ok {
+			transferId = ch.Metadata[userSelector]
+		}
+
+		if transferId != "" {
+			// if transferid exists, get transfer
+			t, _ := transfer.Get(
+				transferId,
+				nil,
+			)
+
+			reversalParams := &stripe.ReversalParams{
+				Amount:   stripe.Int64(t.Amount),
+				Transfer: stripe.String(transferId),
+			}
+			rev, err := reversal.New(reversalParams)
+			if err != nil {
+				log.Println("reversal failed")
+			} else {
+				log.Println("reversal succeeded")
+				log.Println(rev.ID)
+				log.Println(t.Amount)
+			}
+
+		}
+	}
+
+	params := &stripe.RefundParams{
+		Charge: stripe.String(txnId),
+	}
+
+	r, err := refund.New(params)
+	if err != nil {
+		return
+	}
+	log.Println("refund succeeded")
+	log.Println(r)
+
 }
 
 type ChargeList struct {
@@ -490,12 +584,43 @@ func GetPodTransferList(c echo.Context) error {
 	return c.JSON(http.StatusOK, transfers)
 }
 
-func CreateRefund(c echo.Context) error {
-	// StripeWebhook for chargeback and refund, revert transfers for chargeback txn too
-
+func ScheduleRefund(c echo.Context) error {
 	stripe.Key = getStripeKey()
 	// get from params
-	log.Println("CreateRefund")
+	log.Println("ScheduleRefund")
+	txnId := c.Param("txnId")
+
+	// get charge
+	ch, err := charge.Get(
+		txnId,
+		nil,
+	)
+	if err != nil {
+		return AbstractError(c)
+	}
+
+	params := &stripe.ChargeParams{}
+
+	t := time.Now().String()
+	params.AddMetadata("toRefund", t)
+
+	updatedCharge, err := charge.Update(
+		ch.ID,
+		params,
+	)
+	if err != nil {
+		return AbstractError(c)
+	}
+
+	log.Println(updatedCharge)
+
+	return c.String(http.StatusOK, "Refund scheduled. Allow time for processing.")
+}
+
+func CancelScheduledRefund(c echo.Context) error {
+	stripe.Key = getStripeKey()
+	// get from params
+	log.Println("CancelScheduledRefund")
 	txnId := c.Param("txnId")
 
 	// get charge
@@ -504,58 +629,20 @@ func CreateRefund(c echo.Context) error {
 		nil,
 	)
 
-	pod := Pod{}
-	// get pod from PodSelector, and collaborators
-	if _, ok := ch.Metadata["podSelector"]; ok {
-		result := DB.Where("selector = ?", ch.Metadata["podSelector"]).First(&pod)
-		if result.Error != nil {
-			return AbstractError(c)
-		}
-	} else {
-		return AbstractError(c)
+	if ch.Refunded {
+		return c.String(http.StatusInternalServerError, "Already refunded.")
 	}
 
-	collaborators := []Collaborator{}
+	params := &stripe.ChargeParams{}
 
-	result := DB.Preload("User").Where("pod_id = ?", pod.ID).Find(&collaborators)
-	if result.Error != nil {
-		return AbstractError(c)
-	}
+	params.AddMetadata("toRefund", "cancelled")
 
-	for _, clbrtr := range collaborators {
-		transferId := ""
+	updatedCharge, _ := charge.Update(
+		ch.ID,
+		params,
+	)
 
-		userSelector := clbrtr.User.Selector
-		// if charge has been transferred to this user, get the transfer id
-		if _, ok := ch.Metadata[userSelector]; ok {
-			transferId = ch.Metadata[userSelector]
-		}
-
-		if transferId != "" {
-			// if transferid exists, get transfer
-			t, _ := transfer.Get(
-				transferId,
-				nil,
-			)
-
-			reversalParams := &stripe.ReversalParams{
-				Amount:   stripe.Int64(t.Amount),
-				Transfer: stripe.String(transferId),
-			}
-			rev, _ := reversal.New(reversalParams)
-			log.Println("reversal succeeded")
-			log.Println(rev.ID)
-			log.Println(t.Amount)
-		}
-	}
-
-	params := &stripe.RefundParams{
-		Charge: stripe.String(txnId),
-	}
-
-	r, _ := refund.New(params)
-
-	return c.JSON(http.StatusOK, r)
+	return c.JSON(http.StatusOK, updatedCharge)
 }
 
 // testing
