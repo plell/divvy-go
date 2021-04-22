@@ -112,12 +112,13 @@ func BuildUser(user User) UserAPI {
 func BuildUserFromCollaborator(collaborator Collaborator) CollaboratorAPI {
 	u := collaborator.User
 	return CollaboratorAPI{
-		DisplayName: u.DisplayName,
-		Username:    u.Username,
-		Selector:    collaborator.Selector,
-		City:        u.City,
-		IsAdmin:     collaborator.IsAdmin,
-		Avatar:      AvatarToArray(u.Avatar),
+		DisplayName:  u.DisplayName,
+		Username:     u.Username,
+		Selector:     collaborator.Selector,
+		UserSelector: u.Selector,
+		City:         u.City,
+		IsAdmin:      collaborator.IsAdmin,
+		Avatar:       AvatarToArray(u.Avatar),
 	}
 }
 

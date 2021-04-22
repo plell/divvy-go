@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -256,6 +257,8 @@ func CreateCheckoutSession(c echo.Context) error {
 	metaDataPack["userSelector"] = user.Selector
 	metaDataPack["podSelector"] = pod.Selector
 	metaDataPack["collaboratorSelector"] = collaborator.Selector
+	amountAfterFees := getTotalAmountAfterFees(request.Amount)
+	metaDataPack["fees"] = strconv.Itoa(int(amountAfterFees))
 
 	stripe.Key = getStripeKey()
 	params := &stripe.CheckoutSessionParams{
@@ -380,6 +383,7 @@ func DoChargeTransfersAndRefundsCron() {
 
 			for c_i, collaborator := range collaborators {
 				userSelector := collaborator.User.Selector
+				collaboratorSelector := collaborator.Selector
 
 				if _, ok := c.Metadata[userSelector]; ok {
 					//this charge was transfered to the user already! skip it
@@ -396,6 +400,9 @@ func DoChargeTransfersAndRefundsCron() {
 					Destination:   stripe.String(userStripeAccount),
 					TransferGroup: stripe.String(pod.Selector),
 				}
+
+				transferParams.AddMetadata("collaboratorSelector", collaboratorSelector)
+				transferParams.AddMetadata("userSelector", userSelector)
 
 				// transfer to user stripe account
 				tr, err := transfer.New(transferParams)

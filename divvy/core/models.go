@@ -108,6 +108,7 @@ type Collaborator struct {
 type CollaboratorAPI struct {
 	IsAdmin      bool    `json:"isAdmin"`
 	Selector     string  `json:"selector"`
+	UserSelector string  `json:"userSelector"`
 	DisplayName  string  `json:"displayName"`
 	Username     string  `json:"username"`
 	Distribution float64 `json:"distribution"`
