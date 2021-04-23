@@ -14,6 +14,7 @@ import (
 	"github.com/stripe/stripe-go/v72"
 	"github.com/stripe/stripe-go/v72/account"
 	"github.com/stripe/stripe-go/v72/accountlink"
+	"github.com/stripe/stripe-go/v72/balance"
 	"github.com/stripe/stripe-go/v72/charge"
 	"github.com/stripe/stripe-go/v72/checkout/session"
 	"github.com/stripe/stripe-go/v72/payout"
@@ -326,6 +327,24 @@ func getCollaboratorTransferAmount(amountAfterFees int64, collaboratorLength int
 func DoChargeTransfersAndRefundsCron() {
 	log.Println("DoTransfers")
 	stripe.Key = getStripeKey()
+
+	// get account balance
+	b, err := balance.Get(nil)
+	if err != nil {
+		log.Println("you got an error!")
+		log.Println(err)
+	}
+
+	// totalBalance := 0
+	log.Println("jam balance")
+	log.Println(b)
+
+	if len(b.Available) > 0 {
+		log.Println("do balance stuff")
+		// for _, am := range b.Available {
+		// totalBalance = totalBalance + am.Amount
+		// }
+	}
 
 	// get all pods, then do a for loop
 	pods := []Pod{}
