@@ -102,6 +102,7 @@ type Collaborator struct {
 	IsAdmin      bool    `json:"isAdmin"`
 	Selector     string  `json:"selector"`
 	Distribution float64 `json:"distribution"`
+	Role         Role
 	gorm.Model
 	ByTheBy
 }
@@ -116,6 +117,15 @@ type CollaboratorAPI struct {
 	Avatar       []uint  `json:"avatar"`
 }
 
+var ROLE_TABLE = "roles"
+
+type Role struct {
+	CollaboratorID uint `json:"collaboratorId"`
+	RoleTypeID     uint `json:"roleTypeId"`
+	gorm.Model
+	ByTheBy
+}
+
 var POD_TABLE = "pods"
 
 type Pod struct {
@@ -124,6 +134,7 @@ type Pod struct {
 	User          User
 	UserID        uint   `json:"userId"`
 	Selector      string `json:"selector"`
+	PodTypeId     string `json:"podTypeId"`
 	Collaborators []Collaborator
 	gorm.Model
 	ByTheBy
@@ -134,6 +145,16 @@ type PodAPI struct {
 	Description string `json:"description"`
 	Selector    string `json:"selector"`
 	MemberCount int    `json:"memberCount"`
+}
+
+// add pod rules relational table
+var POD_RULE_TABLE = "pod_rules"
+
+type PodRule struct {
+	RuleTypeID uint `json:"ruleTypeId"`
+	PodID      uint `json:"podID"`
+	gorm.Model
+	ByTheBy
 }
 
 var SELECTOR_TABLE = "selectors"
@@ -161,6 +182,29 @@ type Invite struct {
 type InviteAPI struct {
 	Email    string `json:"email"`
 	Selector string `json:"selector"`
+}
+
+// ***************static tables!
+
+// add types "temporary", "ongoing"
+var POD_TYPE_TABLE = "pod_types"
+
+type PodType struct {
+	Name string `json:"name"`
+	ID   uint   `json:"ID"`
+}
+
+// add pod rules "maxPrice", "minPrice"
+var RULE_TYPE_TABLE = "rule_types"
+
+type RuleType struct {
+	Name string `json:"name"`
+	ID   uint   `json:"ID"`
+}
+
+type RoleType struct {
+	Name string `json:"name"`
+	ID   uint   `json:"ID"`
 }
 
 var BETA_KEY_TABLE = "beta_keys"
