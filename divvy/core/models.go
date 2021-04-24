@@ -96,14 +96,14 @@ type AvatarAPI struct {
 var COLLABORATOR_TABLE = "collaborators"
 
 type Collaborator struct {
-	User   User
-	UserID uint `json:"userId"`
-	// Pod          Pod
+	User         User
+	UserID       uint    `json:"userId"`
 	PodID        uint    `json:"podId"`
 	IsAdmin      bool    `json:"isAdmin"`
 	Selector     string  `json:"selector"`
 	Distribution float64 `json:"distribution"`
-	Role         Role
+	RoleType     RoleType
+	RoleTypeID   uint `json:"roleTypeId"`
 	gorm.Model
 	ByTheBy
 }
@@ -116,15 +116,8 @@ type CollaboratorAPI struct {
 	Distribution float64 `json:"distribution"`
 	City         string  `json:"city"`
 	Avatar       []uint  `json:"avatar"`
-}
-
-var ROLE_TABLE = "roles"
-
-type Role struct {
-	CollaboratorID uint `json:"collaboratorId"`
-	RoleTypeID     uint `json:"roleTypeId"`
-	gorm.Model
-	ByTheBy
+	RoleType     RoleType
+	RoleTypeID   uint `json:"roleTypeId"`
 }
 
 var POD_TABLE = "pods"
@@ -224,6 +217,8 @@ type PodRuleType struct {
 	Name string `json:"name"`
 	ID   uint   `json:"ID"`
 }
+
+var ROLE_TYPE_TABLE = "role_types"
 
 type RoleType struct {
 	Name string `json:"name"`

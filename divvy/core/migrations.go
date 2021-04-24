@@ -1,7 +1,13 @@
 package core
 
 func MigrateUp() {
+
 	DB.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(
+		// static type tables
+		&PodTraitType{},
+		&PodRuleType{},
+		&RoleType{},
+
 		&User{},
 		&Avatar{},
 		&StripeAccount{},
@@ -13,12 +19,7 @@ func MigrateUp() {
 		&Invite{},
 		&LoginHistory{},
 		&BetaKey{},
-		&Role{},
 		&EmailVerificationCode{},
-		// static type tables
-		&PodTraitType{},
-		&PodRuleType{},
-		&RoleType{},
 	)
 
 	insertStaticRecords()
@@ -56,7 +57,7 @@ func insertStaticRecords() {
 	DB.Create(&rt)
 	rt = RoleType{Name: "Basic", ID: ROLE_TYPE_BASIC}
 	DB.Create(&rt)
-	rt = RoleType{Name: "Observer", ID: ROLE_TYPE_OBSERVER}
+	rt = RoleType{Name: "Limited", ID: ROLE_TYPE_LIMITED}
 	DB.Create(&rt)
 
 	// make beta key

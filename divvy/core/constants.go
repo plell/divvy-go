@@ -25,4 +25,4 @@ var POD_TRAIT_CUSTOM_SPLIT = uint(4)
 // RoleType
 var ROLE_TYPE_ADMIN = uint(1)
 var ROLE_TYPE_BASIC = uint(2)
-var ROLE_TYPE_OBSERVER = uint(3)
+var ROLE_TYPE_LIMITED = uint(3)

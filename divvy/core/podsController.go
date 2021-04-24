@@ -62,21 +62,13 @@ func CreatePod(c echo.Context) error {
 
 	// create admin collaborator
 	collaborator := Collaborator{
-		PodID:    pod.ID,
-		UserID:   user_id,
-		Selector: MakeSelector(COLLABORATOR_TABLE),
+		PodID:      pod.ID,
+		UserID:     user_id,
+		RoleTypeID: ROLE_TYPE_ADMIN,
+		Selector:   MakeSelector(COLLABORATOR_TABLE),
 	}
 
 	result = DB.Create(&collaborator) // pass pointer of data to Create
-	if result.Error != nil {
-		return AbstractError(c, "Something went wrong")
-	}
-	// make role
-	role := Role{
-		CollaboratorID: collaborator.ID,
-		RoleTypeID:     ROLE_TYPE_ADMIN,
-	}
-	result = DB.Create(&role) // pass pointer of data to Create
 	if result.Error != nil {
 		return AbstractError(c, "Something went wrong")
 	}
@@ -237,10 +229,11 @@ func JoinPod(c echo.Context) error {
 	}
 
 	collaborator := Collaborator{
-		UserID:   user_id,
-		PodID:    invite.PodID,
-		IsAdmin:  false,
-		Selector: MakeSelector(COLLABORATOR_TABLE),
+		UserID:     user_id,
+		PodID:      invite.PodID,
+		RoleTypeID: ROLE_TYPE_BASIC,
+		IsAdmin:    false,
+		Selector:   MakeSelector(COLLABORATOR_TABLE),
 	}
 
 	result = DB.Create(&collaborator)
