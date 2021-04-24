@@ -5,6 +5,7 @@ package core
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -14,6 +15,8 @@ import (
 )
 
 var SENDGRID_INVITE_TEMPLATE = "d-4416cc09847445c9867d1e9d3cf09dcc"
+var SENDGRID_VERIFICATION_TEMPLATE = "d-c0ae63959f8c4a30aca48f6599b07ed4"
+var SENDGRID_REFUND_LIMIT_TEMPLATE = "d-4416cc09847445c9867d1e9d3cf09dcc"
 var SENDGRID_PW_RESET_TEMPLATE = "d-4416cc09847445c9867d1e9d3cf09dcc"
 
 func SendPasswordReset(c echo.Context) error {
@@ -162,4 +165,54 @@ func SendPasswordResetEmail(senderName string, email string, inviteCode string) 
 
 func SendRefundLimitEmail(pod Pod) {
 
+}
+
+func SendVerificationEmail(user User) {
+
+	log.Println("SendVerificationEmail")
+
+	m := mail.NewV3Mail()
+
+	address := "verification@jamwallet.com"
+	name := "jamWallet"
+	e := mail.NewEmail(name, address)
+	m.SetFrom(e)
+
+	m.SetTemplateID(SENDGRID_VERIFICATION_TEMPLATE)
+
+	p := mail.NewPersonalization()
+	tos := []*mail.Email{
+		mail.NewEmail("", user.Username),
+	}
+
+	p.AddTos(tos...)
+
+	verificationCode := EmailVerificationCode{}
+
+	result := DB.Where("user_id = ?", user.ID).First(&verificationCode)
+	if result.Error != nil {
+		// make verification code
+		verificationCode = EmailVerificationCode{
+			UserID: user.ID,
+			Code:   MakeInviteCode(),
+		}
+		DB.Create(&verificationCode)
+	}
+
+	p.SetDynamicTemplateData("verificationCode", verificationCode.Code)
+
+	m.AddPersonalizations(p)
+
+	request := sendgrid.GetRequest(os.Getenv("SENDGRID_API_KEY"), "/v3/mail/send", "https://api.sendgrid.com")
+	request.Method = "POST"
+	var Body = mail.GetRequestBody(m)
+	request.Body = Body
+	response, err := sendgrid.API(request)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println(response.StatusCode)
+		fmt.Println(response.Body)
+		fmt.Println(response.Headers)
+	}
 }

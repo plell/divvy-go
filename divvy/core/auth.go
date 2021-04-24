@@ -80,9 +80,10 @@ func Login(c echo.Context) error {
 		MakeLoginHistory(creds.Username, ip, false)
 		return echo.ErrUnauthorized
 	}
-	// login is correct! check if account is verified, if not don't log in
+	// login is correct! check if account is verified
 	if user.Verified == 0 {
-		return c.String(http.StatusOK, "Verify Email")
+		// if not, send verification email
+		SendVerificationEmail(user)
 	}
 
 	claims := &jwtCustomClaims{
