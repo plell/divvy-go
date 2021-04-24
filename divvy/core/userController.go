@@ -80,6 +80,17 @@ func CreateUser(c echo.Context) error {
 		return AbstractError(c, "Something went wrong")
 	}
 
+	emailVerificationCode := EmailVerificationCode{
+		UserID: user.ID,
+		Code:   MakeInviteCode(),
+	}
+
+	result = DB.Create(&emailVerificationCode) // pass pointer of data to Create
+
+	if result.Error != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
 	return c.String(http.StatusOK, "Success!")
 }
 

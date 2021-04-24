@@ -14,12 +14,13 @@ var POD_RULE_MAX_PRICE = uint(1)
 var POD_RULE_MIN_PRICE = uint(2)
 var POD_RULE_OPEN_TIME = uint(3)
 var POD_RULE_CLOSE_TIME = uint(4)
+var POD_RULE_MAX_GROUP_SIZE = uint(5)
 
 // PodType
-var POD_TYPE_ONGOING = uint(1)
-var POD_TYPE_TEMPORARY = uint(2)
-var POD_TYPE_DIVVY_EVEN = uint(3)
-var POD_TYPE_DIVVY_CUSTOM = uint(4)
+var POD_TRAIT_COLLECTIVE = uint(1)
+var POD_TRAIT_EVENT = uint(2)
+var POD_TRAIT_EVEN_SPLIT = uint(3)
+var POD_TRAIT_CUSTOM_SPLIT = uint(4)
 
 // RoleType
 var ROLE_TYPE_ADMIN = uint(1)

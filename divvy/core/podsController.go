@@ -35,16 +35,48 @@ func CreatePod(c echo.Context) error {
 	if result.Error != nil {
 		return AbstractError(c, "Something went wrong")
 	}
+
+	var traits = []PodTrait{{
+		PodTraitTypeID: POD_TRAIT_EVEN_SPLIT,
+		PodID:          pod.ID,
+	}, {
+		PodTraitTypeID: POD_TRAIT_COLLECTIVE,
+		PodID:          pod.ID,
+	}}
+	// for loop the pod traits
+	result = DB.Create(&traits) // pass pointer of data to Create
+	if result.Error != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	// make pod rules
+	rules := []PodRule{{
+		Value:         "6",
+		PodRuleTypeID: POD_RULE_MAX_GROUP_SIZE,
+		PodID:         pod.ID,
+	}}
+	result = DB.Create(&rules) // pass pointer of data to Create
+	if result.Error != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
 	// create admin collaborator
 	collaborator := Collaborator{
 		PodID:    pod.ID,
 		UserID:   user_id,
-		IsAdmin:  true,
 		Selector: MakeSelector(COLLABORATOR_TABLE),
 	}
 
 	result = DB.Create(&collaborator) // pass pointer of data to Create
-
+	if result.Error != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+	// make role
+	role := Role{
+		CollaboratorID: collaborator.ID,
+		RoleTypeID:     ROLE_TYPE_ADMIN,
+	}
+	result = DB.Create(&role) // pass pointer of data to Create
 	if result.Error != nil {
 		return AbstractError(c, "Something went wrong")
 	}

@@ -6,16 +6,18 @@ func MigrateUp() {
 		&Avatar{},
 		&StripeAccount{},
 		&Pod{},
+		&PodTrait{},
+		&PodRule{},
 		&Collaborator{},
 		&Selector{},
 		&Invite{},
 		&LoginHistory{},
-		&PodRule{},
 		&BetaKey{},
 		&Role{},
+		&EmailVerificationCode{},
 		// static type tables
-		&PodType{},
-		&RuleType{},
+		&PodTraitType{},
+		&PodRuleType{},
 		&RoleType{},
 	)
 
@@ -24,26 +26,28 @@ func MigrateUp() {
 
 func insertStaticRecords() {
 
-	// make pod types
-	DB.Exec(`TRUNCATE TABLE pod_types`)
-	pt := PodType{Name: "Ongoing", ID: POD_TYPE_ONGOING}
+	// make pod traits
+	DB.Exec(`TRUNCATE TABLE pod_trait_types`)
+	pt := PodTraitType{Name: "Collective", ID: POD_TRAIT_COLLECTIVE}
 	DB.Create(&pt)
-	pt = PodType{Name: "Temporary", ID: POD_TYPE_TEMPORARY}
+	pt = PodTraitType{Name: "Event", ID: POD_TRAIT_EVENT}
 	DB.Create(&pt)
-	pt = PodType{Name: "Even Split", ID: POD_TYPE_DIVVY_EVEN}
+	pt = PodTraitType{Name: "Even Split", ID: POD_TRAIT_EVEN_SPLIT}
 	DB.Create(&pt)
-	pt = PodType{Name: "Custom Split", ID: POD_TYPE_DIVVY_CUSTOM}
+	pt = PodTraitType{Name: "Custom Split", ID: POD_TRAIT_CUSTOM_SPLIT}
 	DB.Create(&pt)
 
 	// make pod rule types
-	DB.Exec(`TRUNCATE TABLE rule_types`)
-	prt := RuleType{Name: "Max Price", ID: POD_RULE_MAX_PRICE}
+	DB.Exec(`TRUNCATE TABLE pod_rule_types`)
+	prt := PodRuleType{Name: "Max Price", ID: POD_RULE_MAX_PRICE}
 	DB.Create(&prt)
-	prt = RuleType{Name: "Min Price", ID: POD_RULE_MIN_PRICE}
+	prt = PodRuleType{Name: "Min Price", ID: POD_RULE_MIN_PRICE}
 	DB.Create(&prt)
-	prt = RuleType{Name: "Open Time", ID: POD_RULE_OPEN_TIME}
+	prt = PodRuleType{Name: "Open Time", ID: POD_RULE_OPEN_TIME}
 	DB.Create(&prt)
-	prt = RuleType{Name: "Close Time", ID: POD_RULE_CLOSE_TIME}
+	prt = PodRuleType{Name: "Close Time", ID: POD_RULE_CLOSE_TIME}
+	DB.Create(&prt)
+	prt = PodRuleType{Name: "Max Group Size", ID: POD_RULE_MAX_GROUP_SIZE}
 	DB.Create(&prt)
 
 	// make role types

@@ -24,17 +24,18 @@ type LoginHistory struct {
 var USER_TABLE = "users"
 
 type User struct {
-	DisplayName         string        `json:"displayName"`
-	Username            string        `gorm:"type:varchar(100);unique_index" json:"username"`
-	City                string        `json:"city"`
-	Password            string        `json:"password"`
-	PasswordResetToken  string        `json:"passwordResetToken"`
-	PasswordLastChanged uint          `json:"passwordLastChanged"` // unix timestamp of when verified
-	Selector            string        `json:"selector"`
-	Verified            uint          `json:"verified"` // unix timestamp of when verified
-	Avatar              Avatar        //`gorm:"PRELOAD"` //`gorm:"ForeignKey:ID;AssociationForeignKey:UserID"`
-	StripeAccount       StripeAccount //`gorm:"PRELOAD:false"`
-	Collaborator        []Collaborator
+	DisplayName           string        `json:"displayName"`
+	Username              string        `gorm:"type:varchar(100);unique_index" json:"username"`
+	City                  string        `json:"city"`
+	Password              string        `json:"password"`
+	PasswordResetToken    string        `json:"passwordResetToken"`
+	PasswordLastChanged   uint          `json:"passwordLastChanged"` // unix timestamp of when verified
+	Selector              string        `json:"selector"`
+	Verified              uint          `json:"verified"` // unix timestamp of when verified
+	Avatar                Avatar        //`gorm:"PRELOAD"` //`gorm:"ForeignKey:ID;AssociationForeignKey:UserID"`
+	StripeAccount         StripeAccount //`gorm:"PRELOAD:false"`
+	Collaborator          []Collaborator
+	EmailVerificationCode EmailVerificationCode
 	ByTheBy
 	gorm.Model
 }
@@ -136,6 +137,8 @@ type Pod struct {
 	Selector      string `json:"selector"`
 	PodTypeId     string `json:"podTypeId"`
 	Collaborators []Collaborator
+	PodTrait      []PodTrait
+	PodRule       []PodRule
 	gorm.Model
 	ByTheBy
 }
@@ -151,8 +154,19 @@ type PodAPI struct {
 var POD_RULE_TABLE = "pod_rules"
 
 type PodRule struct {
-	RuleTypeID uint `json:"ruleTypeId"`
-	PodID      uint `json:"podID"`
+	Value         string `json:"value"`
+	PodRuleTypeID uint   `json:"podRuleTypeId"`
+	PodID         uint   `json:"podID"`
+	gorm.Model
+	ByTheBy
+}
+
+// add pod rules relational table
+var POD_TRAIT_TABLE = "pod_traits"
+
+type PodTrait struct {
+	PodTraitTypeID uint `json:"podTraitTypeID"`
+	PodID          uint `json:"podID"`
 	gorm.Model
 	ByTheBy
 }
@@ -184,20 +198,29 @@ type InviteAPI struct {
 	Selector string `json:"selector"`
 }
 
+var EMAIL_VERIFICATION_CODE_TABLE = "email_verification_codes"
+
+type EmailVerificationCode struct {
+	Code   string `json:"code"`
+	UserID uint   `json:"userId"`
+	gorm.Model
+	ByTheBy
+}
+
 // ***************static tables!
 
-// add types "temporary", "ongoing"
-var POD_TYPE_TABLE = "pod_types"
+// add traits "temporary", "ongoing"
+var POD_TRAIT_TYPE_TABLE = "pod_trait_types"
 
-type PodType struct {
+type PodTraitType struct {
 	Name string `json:"name"`
 	ID   uint   `json:"ID"`
 }
 
 // add pod rules "maxPrice", "minPrice"
-var RULE_TYPE_TABLE = "rule_types"
+var RULE_TYPE_TABLE = "pod_rule_types"
 
-type RuleType struct {
+type PodRuleType struct {
 	Name string `json:"name"`
 	ID   uint   `json:"ID"`
 }
