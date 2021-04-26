@@ -203,29 +203,33 @@ type PodJoiner struct {
 func JoinPod(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
-		return AbstractError(c, "Something went wrong")
+		return AbstractError(c, "Couldn't read token")
 	}
 
 	req := PodJoiner{}
 	defer c.Request().Body.Close()
 	err = json.NewDecoder(c.Request().Body).Decode(&req)
-
+	if err != nil {
+		return AbstractError(c, "Couldn't read request")
+	}
 	// get user
 	user := User{}
 	result := DB.First(&user, user_id)
 	if result.Error != nil {
-		return AbstractError(c, "Something went wrong")
-	}
-
-	if err != nil {
-		return AbstractError(c, "Something went wrong")
+		return AbstractError(c, "Couldn't find user")
 	}
 
 	invite := Invite{}
 	result = DB.Where("code = ?", req.Code).First(&invite)
 	if result.Error != nil {
-
 		return AbstractError(c, "This code is not valid")
+	}
+
+	// does the collaborator already exist?
+	coll := Collaborator{}
+	result = DB.Where("user_id = ?", user_id).Where("pod_id = ?", invite.PodID).First(&coll)
+	if result.Error == nil {
+		return AbstractError(c, "You already joined this wallet")
 	}
 
 	collaborator := Collaborator{
@@ -245,7 +249,7 @@ func JoinPod(c echo.Context) error {
 	// delete the invite, its been used
 	DB.Delete(&invite)
 
-	return c.String(http.StatusOK, "Success")
+	return c.String(http.StatusOK, "Welcome to the party")
 }
 
 func GetInvites(c echo.Context) error {

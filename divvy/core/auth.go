@@ -81,7 +81,7 @@ func Login(c echo.Context) error {
 		return echo.ErrUnauthorized
 	}
 	// login is correct! check if account is verified
-	if user.Verified == 0 {
+	if user.Verified == "" {
 		// if not, send verification email
 		SendVerificationEmail(user)
 	}
@@ -112,6 +112,15 @@ func Login(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, response)
 
+}
+
+func Logout(c echo.Context) error {
+	// user_id, err := GetUserIdFromToken(c)
+	// if err != nil {
+	// 	return AbstractError(c, "Something went wrong")
+	// }
+
+	return c.String(http.StatusOK, "Success")
 }
 
 func comparePasswords(hashedPwd string, plainPwd string) bool {

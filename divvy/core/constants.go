@@ -2,8 +2,10 @@ package core
 
 var STRIPE_FLAT_FEE = 30.00   // 30 cents
 var STRIPE_PERCENT_FEE = .029 // 2.9 percent
-var JAM_FLAT_FEE = 20.00      // 20 cents
-var JAM_PERCENT_FEE = .036    // 3.6 percent
+var JAM_FLAT_FEE = 12.00      // 12 cents
+var JAM_PERCENT_FEE = .028    // 2.8 percent
+
+// total fee is 5.7% + 42 cents
 
 var REFUND_LIMIT = 4 //
 

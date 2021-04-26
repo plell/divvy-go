@@ -27,7 +27,6 @@ func SendPasswordReset(c echo.Context) error {
 	// result := DB.Where("username = ?", username).First(&user)
 
 	// if result.Error != nil {
-
 	// 	SendPasswordResetEmail(user.DisplayName, req.Email, code)
 	// }
 
@@ -165,6 +164,20 @@ func SendPasswordResetEmail(senderName string, email string, inviteCode string) 
 
 func SendRefundLimitEmail(pod Pod) {
 
+}
+
+func FwdToSendVerificationEmail(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+	user := User{}
+	result := DB.Find(&user, user_id)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't find user")
+	}
+
+	return c.String(http.StatusOK, "Sent verification email to "+user.Username)
 }
 
 func SendVerificationEmail(user User) {

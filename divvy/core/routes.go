@@ -10,7 +10,7 @@ func MakeRoutes(e *echo.Echo) {
 	e.POST("/login", Login)
 	e.POST("/user", CreateUser)
 	e.POST("/stripe/checkoutSession", CreateCheckoutSession)
-	e.POST("/passwordr/:username", SendPasswordReset)
+	e.POST("/recover/:username", SendPasswordReset)
 
 	mySigningKey := GetSigningKey()
 
@@ -22,6 +22,7 @@ func MakeRoutes(e *echo.Echo) {
 	}
 	r.Use(middleware.JWTWithConfig(config))
 	r.GET("/ping", Pong)
+	e.POST("/logout", Logout)
 	r.GET("/user", GetUser)
 	r.PATCH("/avatar", UpdateAvatar)
 	r.GET("/avatar", GetAvatar)
@@ -30,6 +31,8 @@ func MakeRoutes(e *echo.Echo) {
 	r.POST("/pod/join", JoinPod)
 	r.POST("/stripe/account", LinkStripeAccount)
 	r.GET("/stripe/account", GetStripeAccount)
+	r.POST("/verify/:verificationCode", VerifyAccountEmail)
+	r.POST("/sendVerification", FwdToSendVerificationEmail)
 
 	// s: require token, pod collaborator
 	s := r.Group("")

@@ -18,7 +18,7 @@ func HasStripeAccount(next echo.HandlerFunc) echo.HandlerFunc {
 		result := DB.Where("user_id = ?", user_id).First(&stripeAccount)
 
 		if result.Error != nil {
-			return c.String(http.StatusInternalServerError, "Finish account setup first")
+			return c.String(http.StatusInternalServerError, "Link a deposit account first")
 		}
 
 		return next(c)

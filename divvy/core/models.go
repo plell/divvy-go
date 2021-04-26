@@ -31,7 +31,7 @@ type User struct {
 	PasswordResetToken    string        `json:"passwordResetToken"`
 	PasswordLastChanged   uint          `json:"passwordLastChanged"` // unix timestamp of when verified
 	Selector              string        `json:"selector"`
-	Verified              uint          `json:"verified"` // unix timestamp of when verified
+	Verified              string        `json:"verified"` // datestring of when verified
 	Avatar                Avatar        //`gorm:"PRELOAD"` //`gorm:"ForeignKey:ID;AssociationForeignKey:UserID"`
 	StripeAccount         StripeAccount //`gorm:"PRELOAD:false"`
 	Collaborator          []Collaborator
@@ -44,6 +44,7 @@ type UserAPI struct {
 	DisplayName string `json:"displayName"`
 	Username    string `json:"username"`
 	City        string `json:"city"`
+	Verified    string `json:"verified"` // datestring of when verified
 	Selector    string `json:"selector"`
 	Avatar      []uint `json:"avatar"`
 }

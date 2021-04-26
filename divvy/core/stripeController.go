@@ -270,6 +270,13 @@ func CreateCheckoutSession(c echo.Context) error {
 	metaDataPack["podSelector"] = pod.Selector
 	metaDataPack["collaboratorSelector"] = collaborator.Selector
 	amountAfterFees := getTotalAmountAfterFees(request.Amount)
+	log.Print("amountAfterFees")
+	log.Print(amountAfterFees)
+	log.Print("amountAfterFees turned int")
+	log.Print(int(amountAfterFees))
+	log.Print("amountAfterFees turned int string")
+	log.Print(strconv.Itoa(int(amountAfterFees)))
+
 	metaDataPack["fees"] = strconv.Itoa(int(amountAfterFees))
 
 	stripe.Key = getStripeKey()

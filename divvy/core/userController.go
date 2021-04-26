@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
@@ -41,7 +42,7 @@ func CreateUser(c echo.Context) error {
 	err := json.NewDecoder(c.Request().Body).Decode(&req)
 
 	if err != nil {
-		return AbstractError(c, "Something went wrong")
+		return AbstractError(c, "Couldn't read request")
 	}
 
 	hashedPassword := hashAndSalt(req.Password)
@@ -57,7 +58,7 @@ func CreateUser(c echo.Context) error {
 	result := DB.Create(&user) // pass pointer of data to Create
 
 	if result.Error != nil {
-		return AbstractError(c, "Something went wrong")
+		return AbstractError(c, "Couldn't create user")
 	}
 
 	avatar := Avatar{
@@ -77,7 +78,7 @@ func CreateUser(c echo.Context) error {
 	result = DB.Create(&avatar) // pass pointer of data to Create
 
 	if result.Error != nil {
-		return AbstractError(c, "Something went wrong")
+		return AbstractError(c, "Couldn't create avatar")
 	}
 
 	emailVerificationCode := EmailVerificationCode{
@@ -88,10 +89,41 @@ func CreateUser(c echo.Context) error {
 	result = DB.Create(&emailVerificationCode) // pass pointer of data to Create
 
 	if result.Error != nil {
-		return AbstractError(c, "Something went wrong")
+		return AbstractError(c, "Couldn't create verification code")
 	}
 
 	return c.String(http.StatusOK, "Success!")
+}
+
+func VerifyAccountEmail(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	code := c.Param("verificationCode")
+
+	emailVC := EmailVerificationCode{}
+
+	result := DB.Where("code = ?", code).First(&emailVC)
+	if result.Error != nil {
+		return AbstractError(c, "Verification code invalid")
+	}
+
+	if emailVC.UserID != user_id {
+		return AbstractError(c, "Verification code invalid")
+	}
+
+	user := User{}
+
+	result = DB.First(&user, user_id)
+	if result.Error != nil {
+		return AbstractError(c, "User not found")
+	}
+
+	DB.Model(&user).Update("verified", time.Now().String())
+
+	return c.String(http.StatusOK, user.Verified)
 }
 
 func GetUser(c echo.Context) error {
