@@ -358,7 +358,10 @@ func DoChargeTransfersAndRefundsCron() {
 
 	DB.Find(&pods)
 
+	transferError := false
+
 	for _, pod := range pods {
+
 		// get collaborators
 		colls := []Collaborator{}
 		DB.Preload("User").Preload("User.StripeAccount").Where("pod_id = ?", pod.ID).Find(&colls)
@@ -388,6 +391,14 @@ func DoChargeTransfersAndRefundsCron() {
 
 		// loop through charges
 		for i.Next() {
+
+			if stripeError {
+				// if there was a stripe error below, skip entire protocol
+				// probably a funds_insufficient error,
+				// meaning we need to wait
+				continue
+			}
+
 			c := i.Charge()
 			allCharges = append(allCharges, c)
 			// dont transfer refunded transactions!
@@ -419,6 +430,14 @@ func DoChargeTransfersAndRefundsCron() {
 			collaboratorTransferAmount := getCollaboratorTransferAmount(amountAfterFees, int64(len(collaborators)))
 
 			for c_i, collaborator := range collaborators {
+
+				if transferError {
+					// if there was a transfer error below, skip transfers
+					// probably a funds_insufficient error,
+					// meaning we need to wait
+					continue
+				}
+
 				userSelector := collaborator.User.Selector
 				collaboratorSelector := collaborator.Selector
 
@@ -445,8 +464,9 @@ func DoChargeTransfersAndRefundsCron() {
 				tr, err := transfer.New(transferParams)
 
 				if err != nil {
-					log.Println("you got an error!")
+					log.Println("TRANSFER ERROR!")
 					log.Println(err)
+					transferError = true
 					continue
 				}
 
