@@ -114,6 +114,38 @@ func Login(c echo.Context) error {
 
 }
 
+type PasswordChangeReq struct {
+	Code     string `json:"code"`
+	Password string `json:"password"`
+}
+
+func ChangePassword(c echo.Context) error {
+	passwordReq := PasswordChangeReq{}
+	defer c.Request().Body.Close()
+	err := json.NewDecoder(c.Request().Body).Decode(&passwordReq)
+	if err != nil {
+		log.Println("failed reading login request, $s", err)
+		return c.String(http.StatusInternalServerError, "")
+	}
+
+	user := User{}
+	result := DB.Where("password_reset_token = ?", passwordReq.Code).First(&user)
+	if result.Error != nil {
+		return AbstractError(c, "Token invalid.")
+	}
+
+	user.PasswordResetToken = ""
+	user.PasswordLastChanged = time.Now().String()
+	user.Password = HashAndSalt(passwordReq.Password)
+
+	result = DB.Save(&user)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't save password.")
+	}
+
+	return c.String(http.StatusOK, "Success")
+}
+
 func Logout(c echo.Context) error {
 	// user_id, err := GetUserIdFromToken(c)
 	// if err != nil {

@@ -11,6 +11,7 @@ func MakeRoutes(e *echo.Echo) {
 	e.POST("/user", CreateUser)
 	e.POST("/stripe/checkoutSession", CreateCheckoutSession)
 	e.POST("/recover/:username", SendPasswordReset)
+	e.POST("/recover/submit", ChangePassword)
 
 	mySigningKey := GetSigningKey()
 

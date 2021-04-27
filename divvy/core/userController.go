@@ -45,7 +45,7 @@ func CreateUser(c echo.Context) error {
 		return AbstractError(c, "Couldn't read request")
 	}
 
-	hashedPassword := hashAndSalt(req.Password)
+	hashedPassword := HashAndSalt(req.Password)
 
 	user := User{
 		Username:    req.Username,
@@ -226,7 +226,7 @@ func UpdateAvatar(c echo.Context) error {
 // 	// db.Model(&product).Updates(map[string]interface{}{"Price": 200, "Code": "F42"})
 // }
 
-func hashAndSalt(pwd string) string {
+func HashAndSalt(pwd string) string {
 
 	// Use GenerateFromPassword to hash & salt pwd
 	// MinCost is just an integer constant provided by the bcrypt

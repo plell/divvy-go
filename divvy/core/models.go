@@ -29,7 +29,7 @@ type User struct {
 	City                  string        `json:"city"`
 	Password              string        `json:"password"`
 	PasswordResetToken    string        `json:"passwordResetToken"`
-	PasswordLastChanged   uint          `json:"passwordLastChanged"` // unix timestamp of when verified
+	PasswordLastChanged   string        `json:"passwordLastChanged"`
 	Selector              string        `json:"selector"`
 	Verified              string        `json:"verified"` // datestring of when verified
 	Avatar                Avatar        //`gorm:"PRELOAD"` //`gorm:"ForeignKey:ID;AssociationForeignKey:UserID"`

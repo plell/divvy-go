@@ -17,22 +17,7 @@ import (
 var SENDGRID_INVITE_TEMPLATE = "d-4416cc09847445c9867d1e9d3cf09dcc"
 var SENDGRID_VERIFICATION_TEMPLATE = "d-c0ae63959f8c4a30aca48f6599b07ed4"
 var SENDGRID_REFUND_LIMIT_TEMPLATE = "d-4416cc09847445c9867d1e9d3cf09dcc"
-var SENDGRID_PW_RESET_TEMPLATE = "d-4416cc09847445c9867d1e9d3cf09dcc"
-
-func SendPasswordReset(c echo.Context) error {
-	// username := c.Param("username")
-
-	// user := User{}
-
-	// result := DB.Where("username = ?", username).First(&user)
-
-	// if result.Error != nil {
-	// 	SendPasswordResetEmail(user.DisplayName, req.Email, code)
-	// }
-
-	// always return success, to avoid letting people fish for accounts
-	return c.String(http.StatusOK, "Success!")
-}
+var SENDGRID_PW_RESET_TEMPLATE = "d-f05cdb7f762e48d0a1188f3b0173163d"
 
 type InviteCreator struct {
 	Email       string `json:"email"`
@@ -126,25 +111,45 @@ func SendInviteEmail(senderName string, email string, inviteCode string) {
 	}
 }
 
-func SendPasswordResetEmail(senderName string, email string, inviteCode string) {
+func SendPasswordReset(c echo.Context) error {
+	username := c.Param("username")
+
+	user := User{}
+
+	result := DB.Where("username = ?", username).First(&user)
+	if result.Error != nil {
+		return AbstractError(c, "")
+	}
+	code := MakeInviteCode()
+	user.PasswordResetToken = code
+	result = DB.Save(&user)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't save")
+	}
+
+	SendPasswordResetEmail(username, code)
+	// always return success, to avoid letting people fish for accounts
+	return c.String(http.StatusOK, "Success!")
+}
+
+func SendPasswordResetEmail(username string, code string) {
 	m := mail.NewV3Mail()
 
-	address := "invited@jamwallet.com"
+	address := "request@jamwallet.com"
 	name := "Jamwallet"
 	e := mail.NewEmail(name, address)
 	m.SetFrom(e)
 
-	m.SetTemplateID(SENDGRID_INVITE_TEMPLATE)
+	m.SetTemplateID(SENDGRID_PW_RESET_TEMPLATE)
 
 	p := mail.NewPersonalization()
 	tos := []*mail.Email{
-		mail.NewEmail("", email),
+		mail.NewEmail("", username),
 	}
 
 	p.AddTos(tos...)
 
-	p.SetDynamicTemplateData("inviteCode", inviteCode)
-	p.SetDynamicTemplateData("senderName", senderName)
+	p.SetDynamicTemplateData("resetCode", code)
 
 	m.AddPersonalizations(p)
 
