@@ -33,7 +33,7 @@ func MakeRoutes(e *echo.Echo) {
 	r.POST("/stripe/account", LinkStripeAccount)
 	r.GET("/stripe/account", GetStripeAccount)
 	r.POST("/verify/:verificationCode", VerifyAccountEmail)
-	r.POST("/sendVerification", FwdToSendVerificationEmail)
+	r.POST("/sendVerification", SendVerificationEmail)
 
 	// s: require token, pod collaborator
 	s := r.Group("")

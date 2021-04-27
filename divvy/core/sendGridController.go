@@ -16,12 +16,17 @@ import (
 
 var SENDGRID_INVITE_TEMPLATE = "d-4416cc09847445c9867d1e9d3cf09dcc"
 var SENDGRID_VERIFICATION_TEMPLATE = "d-c0ae63959f8c4a30aca48f6599b07ed4"
-var SENDGRID_REFUND_LIMIT_TEMPLATE = "d-4416cc09847445c9867d1e9d3cf09dcc"
+var SENDGRID_REFUND_LIMIT_TEMPLATE = "d-5ee1dfa663414d14b194eb770b8b65ef"
 var SENDGRID_PW_RESET_TEMPLATE = "d-f05cdb7f762e48d0a1188f3b0173163d"
 
 type InviteCreator struct {
 	Email       string `json:"email"`
 	PodSelector string `json:"podSelector"`
+}
+
+type DynamicData struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 func SendInvite(c echo.Context) error {
@@ -70,52 +75,28 @@ func SendInvite(c echo.Context) error {
 		return AbstractError(c, "Something went wrong")
 	}
 
-	SendInviteEmail(user.DisplayName, req.Email, code)
+	dd := []DynamicData{}
+
+	dd = append(dd, DynamicData{
+		Key:   "inviteCode",
+		Value: code,
+	})
+
+	dd = append(dd, DynamicData{
+		Key:   "senderName",
+		Value: user.DisplayName,
+	})
+
+	emails := []string{req.Email}
+
+	SendEmail("invite", SENDGRID_INVITE_TEMPLATE, emails, dd)
 
 	return c.String(http.StatusOK, "Success!")
 }
 
-func SendInviteEmail(senderName string, email string, inviteCode string) {
-	m := mail.NewV3Mail()
-
-	address := "invited@jamwallet.com"
-	name := "Jamwallet"
-	e := mail.NewEmail(name, address)
-	m.SetFrom(e)
-
-	m.SetTemplateID(SENDGRID_INVITE_TEMPLATE)
-
-	p := mail.NewPersonalization()
-	tos := []*mail.Email{
-		mail.NewEmail("", email),
-	}
-
-	p.AddTos(tos...)
-
-	p.SetDynamicTemplateData("inviteCode", inviteCode)
-	p.SetDynamicTemplateData("senderName", senderName)
-
-	m.AddPersonalizations(p)
-
-	request := sendgrid.GetRequest(os.Getenv("SENDGRID_API_KEY"), "/v3/mail/send", "https://api.sendgrid.com")
-	request.Method = "POST"
-	var Body = mail.GetRequestBody(m)
-	request.Body = Body
-	response, err := sendgrid.API(request)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println(response.StatusCode)
-		fmt.Println(response.Body)
-		fmt.Println(response.Headers)
-	}
-}
-
 func SendPasswordReset(c echo.Context) error {
 	username := c.Param("username")
-
 	user := User{}
-
 	result := DB.Where("username = ?", username).First(&user)
 	if result.Error != nil {
 		return AbstractError(c, "")
@@ -127,51 +108,42 @@ func SendPasswordReset(c echo.Context) error {
 		return AbstractError(c, "Couldn't save")
 	}
 
-	SendPasswordResetEmail(username, code)
-	// always return success, to avoid letting people fish for accounts
+	dd := []DynamicData{}
+
+	dd = append(dd, DynamicData{
+		Key:   "resetCode",
+		Value: code,
+	})
+
+	emails := []string{username}
+
+	SendEmail("request", SENDGRID_PW_RESET_TEMPLATE, emails, dd)
 	return c.String(http.StatusOK, "Success!")
 }
 
-func SendPasswordResetEmail(username string, code string) {
-	m := mail.NewV3Mail()
+func SendRefundLimitEmail(collaborators []Collaborator) {
+	log.Println("SendRefundLimitEmail")
 
-	address := "request@jamwallet.com"
-	name := "Jamwallet"
-	e := mail.NewEmail(name, address)
-	m.SetFrom(e)
+	dd := []DynamicData{}
 
-	m.SetTemplateID(SENDGRID_PW_RESET_TEMPLATE)
+	// list refunds that were cancelled
+	// dd = append(dd, DynamicData{
+	// 	Key:   "verificationCode",
+	// 	Value: verificationCode.Code,
+	// })
 
-	p := mail.NewPersonalization()
-	tos := []*mail.Email{
-		mail.NewEmail("", username),
+	emails := []string{}
+	// email all collaborators
+	for _, clbrtr := range collaborators {
+		user := clbrtr.User
+		emails = append(emails, user.Username)
 	}
 
-	p.AddTos(tos...)
-
-	p.SetDynamicTemplateData("resetCode", code)
-
-	m.AddPersonalizations(p)
-
-	request := sendgrid.GetRequest(os.Getenv("SENDGRID_API_KEY"), "/v3/mail/send", "https://api.sendgrid.com")
-	request.Method = "POST"
-	var Body = mail.GetRequestBody(m)
-	request.Body = Body
-	response, err := sendgrid.API(request)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println(response.StatusCode)
-		fmt.Println(response.Body)
-		fmt.Println(response.Headers)
-	}
+	SendEmail("refunds", SENDGRID_REFUND_LIMIT_TEMPLATE, emails, dd)
 }
 
-func SendRefundLimitEmail(pod Pod) {
-
-}
-
-func FwdToSendVerificationEmail(c echo.Context) error {
+func SendVerificationEmail(c echo.Context) error {
+	log.Println("SendVerificationEmail")
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
 		return AbstractError(c, "Something went wrong")
@@ -182,34 +154,10 @@ func FwdToSendVerificationEmail(c echo.Context) error {
 		return AbstractError(c, "Couldn't find user")
 	}
 
-	return c.String(http.StatusOK, "Sent verification email to "+user.Username)
-}
-
-func SendVerificationEmail(user User) {
-
-	log.Println("SendVerificationEmail")
-
-	m := mail.NewV3Mail()
-
-	address := "verification@jamwallet.com"
-	name := "jamWallet"
-	e := mail.NewEmail(name, address)
-	m.SetFrom(e)
-
-	m.SetTemplateID(SENDGRID_VERIFICATION_TEMPLATE)
-
-	p := mail.NewPersonalization()
-	tos := []*mail.Email{
-		mail.NewEmail("", user.Username),
-	}
-
-	p.AddTos(tos...)
-
 	verificationCode := EmailVerificationCode{}
 
-	result := DB.Where("user_id = ?", user.ID).First(&verificationCode)
+	result = DB.Where("user_id = ?", user.ID).First(&verificationCode)
 	if result.Error != nil {
-		// make verification code
 		verificationCode = EmailVerificationCode{
 			UserID: user.ID,
 			Code:   MakeInviteCode(),
@@ -217,7 +165,44 @@ func SendVerificationEmail(user User) {
 		DB.Create(&verificationCode)
 	}
 
-	p.SetDynamicTemplateData("verificationCode", verificationCode.Code)
+	dd := []DynamicData{}
+
+	dd = append(dd, DynamicData{
+		Key:   "verificationCode",
+		Value: verificationCode.Code,
+	})
+
+	emails := []string{user.Username}
+
+	SendEmail("verification", SENDGRID_VERIFICATION_TEMPLATE, emails, dd)
+
+	return c.String(http.StatusOK, "Sent verification email to "+user.Username)
+}
+
+// general function used by all email routes
+func SendEmail(sender string, templateId string, toEmails []string, dynamicData []DynamicData) {
+
+	m := mail.NewV3Mail()
+
+	address := sender + "@jamwallet.com"
+	name := "Jam Wallet"
+	e := mail.NewEmail(name, address)
+	m.SetFrom(e)
+
+	m.SetTemplateID(templateId)
+
+	p := mail.NewPersonalization()
+	tos := []*mail.Email{}
+
+	for _, em := range toEmails {
+		tos = append(tos, mail.NewEmail("", em))
+	}
+
+	p.AddTos(tos...)
+
+	for _, dd := range dynamicData {
+		p.SetDynamicTemplateData(dd.Key, dd.Value)
+	}
 
 	m.AddPersonalizations(p)
 

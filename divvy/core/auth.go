@@ -83,7 +83,7 @@ func Login(c echo.Context) error {
 	// login is correct! check if account is verified
 	if user.Verified == "" {
 		// if not, send verification email
-		SendVerificationEmail(user)
+		SendVerificationEmail(c)
 	}
 
 	claims := &jwtCustomClaims{

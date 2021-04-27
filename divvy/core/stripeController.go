@@ -480,7 +480,7 @@ func DoChargeTransfersAndRefundsCron() {
 
 		if refundsAreRisky(refundGroup, allCharges) {
 			// reject! too many refunds
-			SendRefundLimitEmail(pod)
+			SendRefundLimitEmail(collaborators)
 		} else {
 			// process refunds
 			for _, chargeToRefund := range refundGroup {
