@@ -376,6 +376,12 @@ func DoChargeTransfersAndRefundsCron() {
 			}
 		}
 
+		if len(collaborators) < 1 {
+			log.Println("NO COLLABORATORS FOR POD! This should never happen")
+			log.Println(pod.ID)
+			continue
+		}
+
 		// get charges for pod
 		params := &stripe.ChargeListParams{
 			TransferGroup: stripe.String(pod.Selector),

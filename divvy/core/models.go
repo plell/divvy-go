@@ -130,6 +130,7 @@ type Pod struct {
 	UserID        uint   `json:"userId"`
 	Selector      string `json:"selector"`
 	PodTypeId     string `json:"podTypeId"`
+	ToDelete      string `json:"toDelete"`
 	Collaborators []Collaborator
 	PodTrait      []PodTrait
 	PodRule       []PodRule
@@ -141,6 +142,7 @@ type PodAPI struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Selector    string `json:"selector"`
+	ToDelete    string `json:"toDelete"`
 	MemberCount int    `json:"memberCount"`
 }
 

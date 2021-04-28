@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 )
@@ -296,6 +297,24 @@ func DeleteInvite(c echo.Context) error {
 	DB.Delete(&invite)
 
 	return c.String(http.StatusOK, "OK!")
+}
+
+func ScheduleDestroyPod(c echo.Context) error {
+	podSelector := c.Param("podSelector")
+
+	pod := Pod{}
+	result := DB.Where("selector = ?", podSelector).First(&pod)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't find user")
+	}
+	pod.ToDelete = time.Now().String()
+	result = DB.Save(&pod)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't find user")
+	}
+
+	responseString := pod.Name + " will be deleted when payouts are finished."
+	return c.String(http.StatusOK, responseString)
 }
 
 func FindAvatarByUserId(avatars []Avatar, userId uint) Avatar {

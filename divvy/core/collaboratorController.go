@@ -58,7 +58,23 @@ func DeleteCollaborator(c echo.Context) error {
 	log.Println(selector)
 	collaborator := Collaborator{}
 
-	result := DB.Where("selector = ?", selector).Delete(&collaborator)
+	result := DB.Where("selector = ?", selector).First(&collaborator)
+	if result.Error != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	// make sure pod has more than 1 collaborator
+	pod := Pod{}
+	result = DB.Preload("Collaborators").First(&pod, collaborator.ID)
+	if result.Error != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	if len(pod.Collaborators) < 2 {
+		return AbstractError(c, "You can't leave a wallet when you're the only member.")
+	}
+
+	result = DB.Delete(&collaborator)
 	if result.Error != nil {
 		return AbstractError(c, "Something went wrong")
 	}

@@ -49,6 +49,7 @@ func MakeRoutes(e *echo.Echo) {
 
 	s.PATCH("/collaborator/admin/:podSelector", UpdateCollaboratorAdmin)
 	s.DELETE("/collaborator/:podSelector/:selector", DeleteCollaborator)
+	s.PATCH("/pod/destroy/:podSelector", ScheduleDestroyPod)
 
 	// a: require token, stripe account, pod collaborator
 	a := s.Group("")
