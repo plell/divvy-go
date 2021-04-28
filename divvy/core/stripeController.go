@@ -392,13 +392,6 @@ func DoChargeTransfersAndRefundsCron() {
 		// loop through charges
 		for i.Next() {
 
-			if stripeError {
-				// if there was a stripe error below, skip entire protocol
-				// probably a funds_insufficient error,
-				// meaning we need to wait
-				continue
-			}
-
 			c := i.Charge()
 			allCharges = append(allCharges, c)
 			// dont transfer refunded transactions!
