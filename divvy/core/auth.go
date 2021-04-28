@@ -80,11 +80,6 @@ func Login(c echo.Context) error {
 		MakeLoginHistory(creds.Username, ip, false)
 		return echo.ErrUnauthorized
 	}
-	// login is correct! check if account is verified
-	if user.Verified == "" {
-		// if not, send verification email
-		SendVerificationEmail(c)
-	}
 
 	claims := &jwtCustomClaims{
 		UserID: user.ID,
@@ -109,6 +104,14 @@ func Login(c echo.Context) error {
 		User:  formatUser}
 
 	MakeLoginHistory(creds.Username, ip, true)
+
+	log.Println("send verification email")
+	// login is correct! check if account is verified
+	if user.Verified == "" {
+		// if not, send verification email
+		Direct_SendVerificationEmail(user)
+	}
+	log.Println("passed verification email")
 
 	return c.JSON(http.StatusOK, response)
 
@@ -172,6 +175,7 @@ func comparePasswords(hashedPwd string, plainPwd string) bool {
 }
 
 func GetUserIdFromToken(c echo.Context) (uint, error) {
+	log.Println("GetUserIdFromToken")
 	user := c.Get("user").(*jwt.Token)
 	claims := user.Claims.(*jwtCustomClaims)
 	log.Println(claims, "claims")

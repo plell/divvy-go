@@ -39,6 +39,7 @@ func MakeRoutes(e *echo.Echo) {
 	s := r.Group("")
 	s.Use(IsPodMember)
 	s.GET("/pod/:podSelector", GetPod)
+	r.PATCH("/pod/:podSelector", UpdatePod)
 	s.GET("/pod/invitelist/:podSelector", GetInvites)
 	s.GET("/stripe/transferlist/:podSelector", GetPodTransferList)
 	s.GET("/stripe/payoutlist/:podSelector", GetPodPayoutList)

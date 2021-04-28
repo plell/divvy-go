@@ -4,7 +4,8 @@ func MigrateUp() {
 
 	DB.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(
 		// static type tables
-		&PodTraitType{},
+		&PodLifecycleType{},
+		&PodPayoutType{},
 		&PodRuleType{},
 		&RoleType{},
 
@@ -12,7 +13,6 @@ func MigrateUp() {
 		&Avatar{},
 		&StripeAccount{},
 		&Pod{},
-		&PodTrait{},
 		&PodRule{},
 		&Collaborator{},
 		&Selector{},
@@ -28,15 +28,22 @@ func MigrateUp() {
 func insertStaticRecords() {
 
 	// make pod traits
-	DB.Exec(`TRUNCATE TABLE pod_trait_types`)
-	pt := PodTraitType{Name: "Collective", ID: POD_TRAIT_COLLECTIVE}
+	DB.Exec(`TRUNCATE TABLE pod_payout_types`)
+	pt := PodPayoutType{Name: "Even Split", ID: POD_PAYOUT_EVEN_SPLIT}
 	DB.Create(&pt)
-	pt = PodTraitType{Name: "Event", ID: POD_TRAIT_EVENT}
+	pt = PodPayoutType{Name: "Admins get 25%", ID: POD_PAYOUT_ADMIN25}
 	DB.Create(&pt)
-	pt = PodTraitType{Name: "Even Split", ID: POD_TRAIT_EVEN_SPLIT}
+	pt = PodPayoutType{Name: "Admins get 50%", ID: POD_PAYOUT_ADMIN50}
 	DB.Create(&pt)
-	pt = PodTraitType{Name: "Custom Split", ID: POD_TRAIT_CUSTOM_SPLIT}
+	pt = PodPayoutType{Name: "Admins get 75%", ID: POD_PAYOUT_ADMIN75}
 	DB.Create(&pt)
+
+	// make pod traits
+	DB.Exec(`TRUNCATE TABLE pod_lifecycle_types`)
+	lt := PodLifecycleType{Name: "Collective", ID: POD_LIFECYCLE_COLLECTIVE}
+	DB.Create(&lt)
+	lt = PodLifecycleType{Name: "Event", ID: POD_LIFECYCLE_EVENT}
+	DB.Create(&lt)
 
 	// make pod rule types
 	DB.Exec(`TRUNCATE TABLE pod_rule_types`)

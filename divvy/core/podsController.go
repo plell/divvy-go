@@ -25,10 +25,12 @@ func CreatePod(c echo.Context) error {
 	}
 
 	pod := Pod{
-		UserID:      user_id,
-		Name:        req.Name,
-		Description: req.Description,
-		Selector:    MakeSelector(POD_TABLE),
+		UserID:          user_id,
+		Name:            req.Name,
+		Description:     req.Description,
+		Selector:        MakeSelector(POD_TABLE),
+		PayoutTypeId:    req.PayoutTypeId,
+		LifecycleTypeId: req.LifecycleTypeId,
 	}
 
 	result := DB.Create(&pod) // pass pointer of data to Create
@@ -37,29 +39,16 @@ func CreatePod(c echo.Context) error {
 		return AbstractError(c, "Something went wrong")
 	}
 
-	var traits = []PodTrait{{
-		PodTraitTypeID: POD_TRAIT_EVEN_SPLIT,
-		PodID:          pod.ID,
-	}, {
-		PodTraitTypeID: POD_TRAIT_COLLECTIVE,
-		PodID:          pod.ID,
-	}}
-	// for loop the pod traits
-	result = DB.Create(&traits) // pass pointer of data to Create
-	if result.Error != nil {
-		return AbstractError(c, "Something went wrong")
-	}
-
 	// make pod rules
-	rules := []PodRule{{
-		Value:         "6",
-		PodRuleTypeID: POD_RULE_MAX_GROUP_SIZE,
-		PodID:         pod.ID,
-	}}
-	result = DB.Create(&rules) // pass pointer of data to Create
-	if result.Error != nil {
-		return AbstractError(c, "Something went wrong")
-	}
+	// rules := []PodRule{{
+	// 	Value:         "6",
+	// 	PodRuleTypeID: POD_RULE_MAX_GROUP_SIZE,
+	// 	PodID:         pod.ID,
+	// }}
+	// result = DB.Create(&rules) // pass pointer of data to Create
+	// if result.Error != nil {
+	// 	return AbstractError(c, "Something went wrong")
+	// }
 
 	// create admin collaborator
 	collaborator := Collaborator{
@@ -75,9 +64,68 @@ func CreatePod(c echo.Context) error {
 	}
 
 	podResponse := PodAPI{
-		Name:        pod.Name,
-		Description: pod.Description,
-		Selector:    pod.Selector,
+		Name:            pod.Name,
+		Description:     pod.Description,
+		Selector:        pod.Selector,
+		PayoutTypeId:    pod.PayoutTypeId,
+		LifecycleTypeId: pod.LifecycleTypeId,
+	}
+
+	return c.JSON(http.StatusOK, podResponse)
+}
+
+func UpdatePod(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	req := Pod{}
+	defer c.Request().Body.Close()
+	err = json.NewDecoder(c.Request().Body).Decode(&req)
+
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	// find pod
+
+	podSelector := c.Param("podSelector")
+	pod := Pod{}
+	result := DB.Where("selector = ?", podSelector).First(&pod) // pass pointer of data to Create
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't find pod")
+	}
+
+	pod.UserID = user_id
+	pod.Name = req.Name
+	pod.Description = req.Description
+	pod.PayoutTypeId = req.PayoutTypeId
+	pod.LifecycleTypeId = req.LifecycleTypeId
+
+	result = DB.Save(&pod) // pass pointer of data to Create
+
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't save pod")
+	}
+
+	// make pod rules
+	// rules := []PodRule{{
+	// 	Value:         "6",
+	// 	PodRuleTypeID: POD_RULE_MAX_GROUP_SIZE,
+	// 	PodID:         pod.ID,
+	// }}
+	// result = DB.Create(&rules) // pass pointer of data to Create
+	// if result.Error != nil {
+	// 	return AbstractError(c, "Something went wrong")
+	// }
+
+	podResponse := PodAPI{
+		Name:            pod.Name,
+		Description:     pod.Description,
+		Selector:        pod.Selector,
+		PayoutTypeId:    pod.PayoutTypeId,
+		LifecycleTypeId: pod.LifecycleTypeId,
 	}
 
 	return c.JSON(http.StatusOK, podResponse)
@@ -158,24 +206,16 @@ type PodResponse struct {
 }
 
 func GetPod(c echo.Context) error {
-	// get user_id from jwt
-	// user_id, err := GetUserIdFromToken(c)
-
-	// if err != nil {
-	// 	return AbstractError(c,"Something went wrong")
-	// }
-	// get from params
 	podSelector := c.Param("podSelector")
 
 	pod := Pod{}
-	result := DB.Where("selector = ?", podSelector).First(&pod)
+	result := DB.Preload("PayoutType").Preload("LifecycleType").Where("selector = ?", podSelector).First(&pod)
 	if result.Error != nil {
 		return AbstractError(c, "Something went wrong")
 	}
 
 	// get collaborators
 	collaborators := []Collaborator{}
-	// SELECT * FROM divvy_pods WHERE id IN (1,2,3);
 	result = DB.Preload("User").Preload("User.Avatar").Where("pod_id = ?", pod.ID).Find(&collaborators)
 
 	if result.Error != nil {

@@ -148,6 +148,7 @@ func SendVerificationEmail(c echo.Context) error {
 	if err != nil {
 		return AbstractError(c, "Something went wrong")
 	}
+
 	user := User{}
 	result := DB.Find(&user, user_id)
 	if result.Error != nil {
@@ -218,4 +219,28 @@ func SendEmail(sender string, templateId string, toEmails []string, dynamicData 
 		fmt.Println(response.Body)
 		fmt.Println(response.Headers)
 	}
+}
+
+func Direct_SendVerificationEmail(user User) {
+	verificationCode := EmailVerificationCode{}
+
+	result := DB.Where("user_id = ?", user.ID).First(&verificationCode)
+	if result.Error != nil {
+		verificationCode = EmailVerificationCode{
+			UserID: user.ID,
+			Code:   MakeInviteCode(),
+		}
+		DB.Create(&verificationCode)
+	}
+
+	dd := []DynamicData{}
+
+	dd = append(dd, DynamicData{
+		Key:   "verificationCode",
+		Value: verificationCode.Code,
+	})
+
+	emails := []string{user.Username}
+
+	SendEmail("verification", SENDGRID_VERIFICATION_TEMPLATE, emails, dd)
 }

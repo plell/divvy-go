@@ -124,26 +124,32 @@ type CollaboratorAPI struct {
 var POD_TABLE = "pods"
 
 type Pod struct {
-	Name          string `json:"name"`
-	Description   string `json:"description"`
-	User          User
-	UserID        uint   `json:"userId"`
-	Selector      string `json:"selector"`
-	PodTypeId     string `json:"podTypeId"`
-	ToDelete      string `json:"toDelete"`
-	Collaborators []Collaborator
-	PodTrait      []PodTrait
-	PodRule       []PodRule
+	Name            string `json:"name"`
+	Description     string `json:"description"`
+	User            User
+	UserID          uint             `json:"userId"`
+	Selector        string           `json:"selector"`
+	PayoutType      PodPayoutType    `json:"payoutType"`
+	PayoutTypeId    uint             `json:"payoutTypeId"`
+	LifecycleType   PodLifecycleType `json:"lifecycleType"`
+	LifecycleTypeId uint             `json:"lifecycleTypeId"`
+	ToDelete        string           `json:"toDelete"`
+	Collaborators   []Collaborator
+	PodRule         []PodRule
 	gorm.Model
 	ByTheBy
 }
 type PodAPI struct {
-	ID          uint   `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Selector    string `json:"selector"`
-	ToDelete    string `json:"toDelete"`
-	MemberCount int    `json:"memberCount"`
+	ID              uint             `json:"id"`
+	Name            string           `json:"name"`
+	Description     string           `json:"description"`
+	Selector        string           `json:"selector"`
+	ToDelete        string           `json:"toDelete"`
+	PayoutTypeId    uint             `json:"payoutTypeId"`
+	LifecycleTypeId uint             `json:"lifecycleTypeId"`
+	MemberCount     int              `json:"memberCount"`
+	PayoutType      PodPayoutType    `json:"payoutType"`
+	LifecycleType   PodLifecycleType `json:"lifecycleType"`
 }
 
 // add pod rules relational table
@@ -153,16 +159,6 @@ type PodRule struct {
 	Value         string `json:"value"`
 	PodRuleTypeID uint   `json:"podRuleTypeId"`
 	PodID         uint   `json:"podID"`
-	gorm.Model
-	ByTheBy
-}
-
-// add pod rules relational table
-var POD_TRAIT_TABLE = "pod_traits"
-
-type PodTrait struct {
-	PodTraitTypeID uint `json:"podTraitTypeID"`
-	PodID          uint `json:"podID"`
 	gorm.Model
 	ByTheBy
 }
@@ -205,27 +201,35 @@ type EmailVerificationCode struct {
 
 // ***************static tables!
 
-// add traits "temporary", "ongoing"
-var POD_TRAIT_TYPE_TABLE = "pod_trait_types"
-
-type PodTraitType struct {
-	Name string `json:"name"`
-	ID   uint   `json:"ID"`
-}
-
 // add pod rules "maxPrice", "minPrice"
 var RULE_TYPE_TABLE = "pod_rule_types"
 
 type PodRuleType struct {
 	Name string `json:"name"`
-	ID   uint   `json:"ID"`
+	ID   uint   `json:"id"`
+}
+
+// add payout types "even", "admin25", "admin50", "admin75",
+var POD_PAYOUT_TYPE_TABLE = "pod_payout_types"
+
+type PodPayoutType struct {
+	Name string `json:"name"`
+	ID   uint   `json:"id"`
+}
+
+// add pod rules "maxPrice", "minPrice"
+var POD_LIFECYCLE_TYPE_TABLE = "pod_lifecycle_types"
+
+type PodLifecycleType struct {
+	Name string `json:"name"`
+	ID   uint   `json:"id"`
 }
 
 var ROLE_TYPE_TABLE = "role_types"
 
 type RoleType struct {
 	Name string `json:"name"`
-	ID   uint   `json:"ID"`
+	ID   uint   `json:"id"`
 }
 
 var BETA_KEY_TABLE = "beta_keys"
