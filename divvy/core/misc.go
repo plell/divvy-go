@@ -124,14 +124,14 @@ func BuildUserFromCollaborator(collaborator Collaborator) CollaboratorAPI {
 }
 
 func BuildPod(pod Pod) PodAPI {
-	collaborators := []Collaborator{}
-	DB.Model(&Collaborator{}).Where("pod_id = ?", pod.ID).Find(&collaborators)
-
+	collaborators := pod.Collaborators
 	memberCount := len(collaborators)
 	return PodAPI{
-		Name:        pod.Name,
-		Description: pod.Description,
-		Selector:    pod.Selector,
-		MemberCount: memberCount,
+		Name:          pod.Name,
+		Description:   pod.Description,
+		Selector:      pod.Selector,
+		MemberCount:   memberCount,
+		PayoutType:    pod.PayoutType,
+		LifecycleType: pod.LifecycleType,
 	}
 }

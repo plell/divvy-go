@@ -25,6 +25,7 @@ func MakeRoutes(e *echo.Echo) {
 	r.GET("/ping", Pong)
 	e.POST("/logout", Logout)
 	r.GET("/user", GetUser)
+	r.PATCH("/user", UpdateUser)
 	r.PATCH("/avatar", UpdateAvatar)
 	r.GET("/avatar", GetAvatar)
 	r.GET("/pod/list", GetPodList)

@@ -134,13 +134,15 @@ func GetUser(c echo.Context) error {
 
 	user := User{}
 
-	result := DB.First(&user, user_id)
+	result := DB.Preload("Avatar").First(&user, user_id)
 
 	if result.Error != nil {
 		return AbstractError(c, "Something went wrong")
 	}
 
-	return c.JSON(http.StatusOK, user)
+	formatUser := BuildUser(user)
+
+	return c.JSON(http.StatusOK, formatUser)
 }
 
 func GetAvatar(c echo.Context) error {
@@ -162,6 +164,32 @@ func GetAvatar(c echo.Context) error {
 		Avatar: avatarFeatures}
 
 	return c.JSON(http.StatusOK, response)
+}
+
+func UpdateUser(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	req := User{}
+	defer c.Request().Body.Close()
+	err = json.NewDecoder(c.Request().Body).Decode(&req)
+
+	// find user
+	user := User{}
+	result := DB.First(&user, user_id)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't find user")
+	}
+	// update display name
+	user.DisplayName = req.DisplayName
+	result = DB.Save(&user)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't save user")
+	}
+
+	return c.String(http.StatusOK, "Details saved!")
 }
 
 func UpdateAvatar(c echo.Context) error {

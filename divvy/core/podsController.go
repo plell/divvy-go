@@ -185,7 +185,7 @@ func GetPodList(c echo.Context) error {
 
 	// IF podIds is empty it returns all!
 	// SELECT * FROM divvy_pods WHERE id IN (1,2,3);
-	result = DB.Where(podIds).Find(&pods)
+	result = DB.Preload("LifecycleType").Preload("PayoutType").Preload("Collaborators").Where(podIds).Find(&pods)
 	if result.Error != nil {
 		return AbstractError(c, "Something went wrong")
 	}

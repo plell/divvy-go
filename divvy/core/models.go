@@ -55,12 +55,14 @@ type StripeAccount struct {
 	UserID   uint   `json:"userId"`
 	AcctID   string `json:"acctId"`
 	Selector string `json:"selector"`
+	Verified string `json:"verified"`
 	gorm.Model
 	ByTheBy
 }
 type StripeAccountAPI struct {
 	AcctID   string `json:"acctId"`
 	Selector string `json:"selector"`
+	Verified string `json:"verified"`
 }
 
 var AVATAR_TABLE = "avatars"
