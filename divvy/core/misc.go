@@ -118,8 +118,9 @@ func BuildUserFromCollaborator(collaborator Collaborator) CollaboratorAPI {
 		Selector:     collaborator.Selector,
 		UserSelector: u.Selector,
 		City:         u.City,
-		IsAdmin:      collaborator.IsAdmin,
+		IsAdmin:      collaborator.RoleTypeID == ROLE_TYPE_ADMIN,
 		Avatar:       AvatarToArray(u.Avatar),
+		RoleTypeID:   collaborator.RoleTypeID,
 	}
 }
 

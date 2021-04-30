@@ -277,7 +277,6 @@ func JoinPod(c echo.Context) error {
 		UserID:     user_id,
 		PodID:      invite.PodID,
 		RoleTypeID: ROLE_TYPE_BASIC,
-		IsAdmin:    false,
 		Selector:   MakeSelector(COLLABORATOR_TABLE),
 	}
 

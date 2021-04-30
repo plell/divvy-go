@@ -102,7 +102,6 @@ type Collaborator struct {
 	User         User
 	UserID       uint    `json:"userId"`
 	PodID        uint    `json:"podId"`
-	IsAdmin      bool    `json:"isAdmin"`
 	Selector     string  `json:"selector"`
 	Distribution float64 `json:"distribution"`
 	RoleType     RoleType

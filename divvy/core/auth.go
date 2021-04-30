@@ -72,14 +72,14 @@ func Login(c echo.Context) error {
 
 	if result.Error != nil {
 		MakeLoginHistory(creds.Username, ip, false)
-		return echo.ErrUnauthorized
+		return AbstractError(c, "Email or password incorrect")
 	}
 
 	// Check if password is correct
 	if comparePasswords(user.Password, creds.Password) == false {
 		// logged failed login
 		MakeLoginHistory(creds.Username, ip, false)
-		return echo.ErrUnauthorized
+		return AbstractError(c, "Email or password incorrect")
 	}
 
 	claims := &jwtCustomClaims{

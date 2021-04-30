@@ -9,15 +9,11 @@ import (
 )
 
 type CollaboratorRoleRequest struct {
-	IsAdmin  bool   `json:"isAdmin"`
-	Selector string `json:"selector"`
+	RoleTypeID uint   `json:"roleTypeId"`
+	Selector   string `json:"selector"`
 }
 
-func UpdateCollaboratorAdmin(c echo.Context) error {
-	// user_id, err := GetUserIdFromToken(c)
-	// if err != nil {
-	// 	return AbstractError(c,"Something went wrong")
-	// }
+func UpdateCollaboratorRole(c echo.Context) error {
 
 	req := CollaboratorRoleRequest{}
 	defer c.Request().Body.Close()
@@ -32,16 +28,15 @@ func UpdateCollaboratorAdmin(c echo.Context) error {
 	collaborator := Collaborator{}
 	result := DB.Where("selector = ?", req.Selector).First(&collaborator)
 	if result.Error != nil {
-		return AbstractError(c, "Something went wrong")
+		return AbstractError(c, "Couldn't find collaborator")
 	}
 
-	log.Println("req")
-	log.Println(req)
+	collaborator.RoleTypeID = req.RoleTypeID
 
-	// collaborator.IsAdmin = req.IsAdmin
-	DB.Model(&collaborator).Update("is_admin", req.IsAdmin)
-
-	// DB.Save(&collaborator)
+	result = DB.Save(&collaborator)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't update!")
+	}
 
 	return c.String(http.StatusOK, "Success")
 }

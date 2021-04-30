@@ -46,7 +46,6 @@ func MakeRoutes(e *echo.Echo) {
 	s := r.Group("")
 	s.Use(IsPodMember)
 	s.GET("/pod/:podSelector", GetPod)
-	r.PATCH("/pod/:podSelector", UpdatePod)
 	s.GET("/pod/invitelist/:podSelector", GetInvites)
 	s.GET("/stripe/transferlist/:podSelector", GetPodTransferList)
 	s.GET("/stripe/payoutlist/:podSelector", GetPodPayoutList)
@@ -55,9 +54,14 @@ func MakeRoutes(e *echo.Echo) {
 	s.POST("/pod/invite/:podSelector", SendInvite)
 	s.DELETE("/pod/invite/:podSelector/:selector", DeleteInvite)
 
-	s.PATCH("/collaborator/admin/:podSelector", UpdateCollaboratorAdmin)
-	s.DELETE("/collaborator/:podSelector/:selector", DeleteCollaborator)
 	s.PATCH("/pod/destroy/:podSelector", ScheduleDestroyPod)
+
+	// v: require token, pod collaborator, and admin
+	v := s.Group("")
+	v.Use(IsAdmin)
+	v.PATCH("/collaborator/role/:podSelector", UpdateCollaboratorRole)
+	v.DELETE("/collaborator/:podSelector/:selector", DeleteCollaborator)
+	v.PATCH("/pod/:podSelector", UpdatePod)
 
 	// a: require token, stripe account, pod collaborator
 	a := s.Group("")
