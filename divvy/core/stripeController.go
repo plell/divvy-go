@@ -270,14 +270,7 @@ func CreateCheckoutSession(c echo.Context) error {
 	metaDataPack["podSelector"] = pod.Selector
 	metaDataPack["collaboratorSelector"] = collaborator.Selector
 	amountAfterFees := getTotalAmountAfterFees(request.Amount)
-	log.Print("amountAfterFees")
-	log.Print(amountAfterFees)
-	log.Print("amountAfterFees turned int")
-	log.Print(int(amountAfterFees))
-	log.Print("amountAfterFees turned int string")
-	log.Print(strconv.Itoa(int(amountAfterFees)))
-
-	metaDataPack["fees"] = strconv.Itoa(int(amountAfterFees))
+	metaDataPack["amountAfterFees"] = strconv.Itoa(int(amountAfterFees))
 
 	stripe.Key = getStripeKey()
 	params := &stripe.CheckoutSessionParams{
@@ -426,6 +419,15 @@ func DoChargeTransfersAndRefundsCron() {
 
 			chargeParams := &stripe.ChargeParams{}
 			amountAfterFees := getTotalAmountAfterFees(c.Amount)
+
+			if c.Metadata["amountAfterFees"] != "" {
+				// if in metadata, take it from there, stay consistant
+				aaf, err := strconv.Atoi(c.Metadata["amountAfterFees"])
+				if err == nil {
+					amountAfterFees = int64(aaf)
+				}
+			}
+
 			collaboratorTransferAmount := getCollaboratorTransferAmount(amountAfterFees, int64(len(collaborators)))
 
 			for c_i, collaborator := range collaborators {

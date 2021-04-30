@@ -8,10 +8,16 @@ import (
 func MakeRoutes(e *echo.Echo) {
 	// token not required group
 	e.POST("/login", Login)
-	e.POST("/user", CreateUser)
-	e.POST("/stripe/checkoutSession", CreateCheckoutSession)
+	e.POST("/logout", Logout)
+	// for donation
+	// e.POST("/stripe/checkoutSession", CreateCheckoutSession)
 	e.POST("/recover/:username", SendPasswordReset)
 	e.POST("/recover/submit", ChangePassword)
+
+	// beta key required
+	b := e.Group("")
+	b.Use(HasBetaKey)
+	b.POST("/user", CreateUser)
 
 	mySigningKey := GetSigningKey()
 
@@ -23,7 +29,7 @@ func MakeRoutes(e *echo.Echo) {
 	}
 	r.Use(middleware.JWTWithConfig(config))
 	r.GET("/ping", Pong)
-	e.POST("/logout", Logout)
+
 	r.GET("/user", GetUser)
 	r.PATCH("/user", UpdateUser)
 	r.PATCH("/avatar", UpdateAvatar)
@@ -60,4 +66,8 @@ func MakeRoutes(e *echo.Echo) {
 	a.POST("/stripe/refund/:podSelector/:txnId", ScheduleRefund)
 	a.POST("/stripe/refund/cancel/:podSelector/:txnId", CancelScheduledRefund)
 
+	// super: requires token and superadmin
+	super := r.Group("")
+	super.Use(IsSuperAdmin)
+	super.POST("/super/sendBetaInvite", SendBetaInvite)
 }

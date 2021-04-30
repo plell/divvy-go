@@ -12,6 +12,7 @@ import (
 
 type UserCreator struct {
 	DisplayName string `json:"displayName"`
+	BetaKey     string `json:"betaKey"`
 	City        string `json:"city"`
 	Username    string `json:"username"`
 	Password    string `json:"password"`
@@ -41,6 +42,7 @@ func CreateUser(c echo.Context) error {
 	defer c.Request().Body.Close()
 	err := json.NewDecoder(c.Request().Body).Decode(&req)
 
+	log.Println("CreateUser")
 	if err != nil {
 		return AbstractError(c, "Couldn't read request")
 	}

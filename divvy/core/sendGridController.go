@@ -18,6 +18,7 @@ var SENDGRID_INVITE_TEMPLATE = "d-4416cc09847445c9867d1e9d3cf09dcc"
 var SENDGRID_VERIFICATION_TEMPLATE = "d-c0ae63959f8c4a30aca48f6599b07ed4"
 var SENDGRID_REFUND_LIMIT_TEMPLATE = "d-5ee1dfa663414d14b194eb770b8b65ef"
 var SENDGRID_PW_RESET_TEMPLATE = "d-f05cdb7f762e48d0a1188f3b0173163d"
+var SENDGRID_BETA_INVITE_TEMPLATE = "d-f05cdb7f762e48d0a1188f3b0173163d"
 
 type InviteCreator struct {
 	Email       string `json:"email"`
@@ -90,6 +91,50 @@ func SendInvite(c echo.Context) error {
 	emails := []string{req.Email}
 
 	SendEmail("invite", SENDGRID_INVITE_TEMPLATE, emails, dd)
+
+	return c.String(http.StatusOK, "Success!")
+}
+
+func SendBetaInvite(c echo.Context) error {
+
+	req := InviteCreator{}
+	defer c.Request().Body.Close()
+	err := json.NewDecoder(c.Request().Body).Decode(&req)
+
+	if err != nil {
+		return AbstractError(c, "Couldn't decode request")
+	}
+
+	// get pod
+	pod := Pod{}
+	result := DB.Where("selector = ?", req.PodSelector).First(&pod)
+
+	if result.Error != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	code := MakeInviteCode()
+
+	betaKey := BetaKey{
+		BetaKey: code,
+	}
+
+	result = DB.Create(&betaKey)
+
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't create beta key")
+	}
+
+	dd := []DynamicData{}
+
+	dd = append(dd, DynamicData{
+		Key:   "betaKey",
+		Value: code,
+	})
+
+	emails := []string{req.Email}
+
+	SendEmail("invite", SENDGRID_BETA_INVITE_TEMPLATE, emails, dd)
 
 	return c.String(http.StatusOK, "Success!")
 }

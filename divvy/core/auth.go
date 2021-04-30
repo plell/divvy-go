@@ -28,7 +28,8 @@ type jwtUserClaims struct {
 }
 
 type jwtCustomClaims struct {
-	UserID uint `json:"UserId"`
+	UserID       uint   `json:"userId"`
+	UserSelector string `json:"userSelector"`
 	// UUID  string `json:"uuid"`
 	// Admin bool   `json:"admin"`
 	jwt.StandardClaims
@@ -82,7 +83,8 @@ func Login(c echo.Context) error {
 	}
 
 	claims := &jwtCustomClaims{
-		UserID: user.ID,
+		UserID:       user.ID,
+		UserSelector: user.Selector,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * (24 * 7)).Unix(),
 		},

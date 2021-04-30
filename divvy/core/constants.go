@@ -9,6 +9,8 @@ var JAM_PERCENT_FEE = .01     // 1 percent
 
 var REFUND_LIMIT = 4 //
 
+var SUPERADMIN_SELECTOR = "papajam89n3y24" //
+
 //model constants
 
 // PodRuleType

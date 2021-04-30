@@ -8,6 +8,45 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+func HasBetaKey(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		// req := UserCreator{}
+		// defer c.Request().Body.Close()
+		// err := json.NewDecoder(c.Request().Body).Decode(&req)
+
+		// if err != nil {
+		// 	return AbstractError(c, "Couldn't read request")
+		// }
+
+		// if req.BetaKey == "" {
+		// 	return AbstractError(c, "You must have a beta key")
+		// }
+
+		// betaKey := BetaKey{}
+		// result := DB.Where("beta_key = ?", req.BetaKey).First(&betaKey)
+		// if result.Error != nil {
+		// 	return AbstractError(c, "Beta key invalid")
+		// }
+
+		return next(c)
+	}
+}
+
+func IsSuperAdmin(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		user := c.Get("user").(*jwt.Token)
+		claims := user.Claims.(*jwtCustomClaims)
+		selector := claims.UserSelector
+		log.Println("IsSuperAdmin?")
+
+		if selector != SUPERADMIN_SELECTOR {
+			return c.String(http.StatusInternalServerError, "Action unauthorized.")
+		}
+
+		return next(c)
+	}
+}
+
 func HasStripeAccount(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		user := c.Get("user").(*jwt.Token)

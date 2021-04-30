@@ -26,6 +26,12 @@ func MigrateUp() {
 }
 
 func insertStaticRecords() {
+	// make superuser
+	user := User{}
+	result := DB.Where("username = ?", "plelldavid@gmail.com").First(&user)
+	if result.Error != nil {
+		CreateSuperUser()
+	}
 
 	// make pod traits
 	DB.Exec(`TRUNCATE TABLE pod_payout_types`)
@@ -71,6 +77,37 @@ func insertStaticRecords() {
 	DB.Exec(`TRUNCATE TABLE beta_keys`)
 	bk := BetaKey{BetaKey: MakeInviteCode()}
 	DB.Create(&bk)
+}
+
+func CreateSuperUser() {
+	hashedPassword := HashAndSalt("!7AM3allet")
+
+	user := User{
+		Username:    "plelldavid@gmail.com",
+		Password:    hashedPassword,
+		DisplayName: "david",
+		City:        "Seattle",
+		Selector:    SUPERADMIN_SELECTOR,
+	}
+
+	DB.Create(&user)
+
+	avatar := Avatar{
+		UserID:   user.ID,
+		Feature1: 0,
+		Feature2: 0,
+		Feature3: 0,
+		Feature4: 0,
+		Feature5: 0,
+		Feature6: 0,
+		Feature7: 0,
+		Feature8: 0,
+		Feature9: 0,
+		Selector: MakeSelector(AVATAR_TABLE),
+	}
+
+	DB.Create(&avatar) // pass pointer of data to Create
+
 }
 
 // type Migrator interface {
