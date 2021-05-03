@@ -33,6 +33,11 @@ func main() {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 
+	// e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+	// 	AllowOrigins: []string{"http://localhost:3000"},
+	// 	AllowHeaders: []string{"Authorization", "Content-Type", "Accept", "User-Agent", "Referer", "Connection", "Upgrade"},
+	// }))
+
 	e.IPExtractor = echo.ExtractIPFromXFFHeader()
 
 	// Make Routes
@@ -42,10 +47,6 @@ func main() {
 	// DB Automigrate
 	core.MigrateUp()
 
-	// set stripe webhooks
-	// stripe listen --forward-to http://localhost:8000/webhook
-	e.GET("/webhook", echo.HandlerFunc(core.HandleStripeWebhook))
-
 	c := cron.New()
 	c.AddFunc("@every 10m", func() {
 		core.DoChargeTransfersAndRefundsCron()
@@ -53,6 +54,7 @@ func main() {
 	})
 	c.Start()
 
+	fmt.Println("start 8000 server!")
 	// Start server
 	e.Logger.Fatal(e.Start(":8000"))
 }

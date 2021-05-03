@@ -2,7 +2,6 @@ package core
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -14,10 +13,14 @@ type CollaboratorRoleRequest struct {
 }
 
 func UpdateCollaboratorRole(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c, "Couldn't read token")
+	}
 
 	req := CollaboratorRoleRequest{}
 	defer c.Request().Body.Close()
-	err := json.NewDecoder(c.Request().Body).Decode(&req)
+	err = json.NewDecoder(c.Request().Body).Decode(&req)
 
 	if err != nil {
 		AbstractError(c, "Something went wrong")
@@ -31,6 +34,10 @@ func UpdateCollaboratorRole(c echo.Context) error {
 		return AbstractError(c, "Couldn't find collaborator")
 	}
 
+	if collaborator.UserID == user_id {
+		return AbstractError(c, "You can't change your own role")
+	}
+
 	collaborator.RoleTypeID = req.RoleTypeID
 
 	result = DB.Save(&collaborator)
@@ -42,15 +49,39 @@ func UpdateCollaboratorRole(c echo.Context) error {
 }
 
 func DeleteCollaborator(c echo.Context) error {
-	// user_id, err := GetUserIdFromToken(c)
-	// if err != nil {
-	// 	return AbstractError(c,"Something went wrong")
-	// }
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
 
 	selector := c.Param("selector")
 
-	log.Println("Selector")
-	log.Println(selector)
+	collaborator := Collaborator{}
+
+	result := DB.Where("selector = ?", selector).First(&collaborator)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't find collaborator")
+	}
+
+	if user_id == collaborator.UserID {
+		return AbstractError(c, "You can't delete yourself.")
+	}
+
+	result = DB.Delete(&collaborator)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't delete collaborator")
+	}
+
+	return c.String(http.StatusOK, "Success")
+}
+
+func LeavePod(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	selector := c.Param("selector")
 	collaborator := Collaborator{}
 
 	result := DB.Where("selector = ?", selector).First(&collaborator)
@@ -62,16 +93,28 @@ func DeleteCollaborator(c echo.Context) error {
 	pod := Pod{}
 	result = DB.Preload("Collaborators").First(&pod, collaborator.ID)
 	if result.Error != nil {
-		return AbstractError(c, "Something went wrong")
+		return AbstractError(c, "Couldn't find collaborators")
 	}
 
-	if len(pod.Collaborators) < 2 {
-		return AbstractError(c, "You can't leave a wallet when you're the only member.")
+	admins := []Collaborator{}
+
+	for _, c := range pod.Collaborators {
+		if c.RoleTypeID == ROLE_TYPE_ADMIN {
+			admins = append(admins, c)
+		}
+	}
+
+	if len(admins) < 2 {
+		return AbstractError(c, "You can't leave this wallet because you're its only admin.")
+	}
+
+	if user_id != collaborator.UserID {
+		return AbstractError(c, "Something went wrong")
 	}
 
 	result = DB.Delete(&collaborator)
 	if result.Error != nil {
-		return AbstractError(c, "Something went wrong")
+		return AbstractError(c, "Couldn't delete collaborator")
 	}
 
 	return c.String(http.StatusOK, "Success")

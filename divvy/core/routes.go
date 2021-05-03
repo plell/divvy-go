@@ -1,11 +1,20 @@
 package core
 
 import (
+	socketio "github.com/googollee/go-socket.io"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
 
+var SocketServer *socketio.Server
+
 func MakeRoutes(e *echo.Echo) {
+	// socket.io server connection
+	SocketServer = MakeSocketServer()
+
+	// stripe webhook listener
+	e.Any("/webhook", echo.HandlerFunc(HandleStripeWebhook))
+
 	// token not required group
 	e.POST("/login", Login)
 	e.POST("/logout", Logout)
@@ -42,6 +51,11 @@ func MakeRoutes(e *echo.Echo) {
 	r.POST("/verify/:verificationCode", VerifyAccountEmail)
 	r.POST("/sendVerification", SendVerificationEmail)
 
+	e.Any("/socket.io/", func(context echo.Context) error {
+		SocketServer.ServeHTTP(context.Response(), context.Request())
+		return nil
+	})
+
 	// s: require token, pod collaborator
 	s := r.Group("")
 	s.Use(IsPodMember)
@@ -53,7 +67,7 @@ func MakeRoutes(e *echo.Echo) {
 	s.GET("/collaboratorlist/:podSelector", GetCollaboratorList)
 	s.POST("/pod/invite/:podSelector", SendInvite)
 	s.DELETE("/pod/invite/:podSelector/:selector", DeleteInvite)
-
+	s.DELETE("/pod/leave/:podSelector/:selector", LeavePod)
 	s.PATCH("/pod/destroy/:podSelector", ScheduleDestroyPod)
 
 	// v: require token, pod collaborator, and admin
@@ -61,6 +75,7 @@ func MakeRoutes(e *echo.Echo) {
 	v.Use(IsAdmin)
 	v.PATCH("/collaborator/role/:podSelector", UpdateCollaboratorRole)
 	v.DELETE("/collaborator/:podSelector/:selector", DeleteCollaborator)
+
 	v.PATCH("/pod/:podSelector", UpdatePod)
 
 	// a: require token, stripe account, pod collaborator

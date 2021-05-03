@@ -53,7 +53,7 @@ func GetStripeAccount(c echo.Context) error {
 	result := DB.Where("user_id = ?", user_id).First(&stripeAccount)
 
 	if result.Error != nil {
-		return c.String(http.StatusInternalServerError, "You need a Stripe account to collect payouts.")
+		return c.String(http.StatusInternalServerError, "Please finish Stripe account creation.")
 	}
 
 	stripe.Key = getStripeKey()
@@ -727,7 +727,6 @@ func HandleStripeWebhook(c echo.Context) error {
 	w := c.Response().Writer
 	req := c.Request()
 	// w http.ResponseWriter, req *http.Request
-	log.Println("hello, im the webhook")
 	const MaxBodyBytes = int64(65536)
 	req.Body = http.MaxBytesReader(w, req.Body, MaxBodyBytes)
 	body, err := ioutil.ReadAll(req.Body)
@@ -751,6 +750,26 @@ func HandleStripeWebhook(c echo.Context) error {
 
 	log.Println(event.Type)
 
+	if event.Type == "charge.succeeded" {
+		var ch stripe.Charge
+		err := json.Unmarshal(event.Data.Raw, &ch)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing webhook JSON: %v\n", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return c.String(http.StatusOK, "ok")
+		}
+		handleSuccessfulCharge(ch)
+	}
+	if event.Type == "payment_intent.succeeded" {
+		var intent stripe.PaymentIntent
+		err := json.Unmarshal(event.Data.Raw, &intent)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing webhook JSON: %v\n", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return c.String(http.StatusOK, "ok")
+		}
+		handleSuccessfulPaymentIntent(intent)
+	}
 	if event.Type == "checkout.session.completed" {
 		var session stripe.CheckoutSession
 		err := json.Unmarshal(event.Data.Raw, &session)
@@ -767,7 +786,50 @@ func HandleStripeWebhook(c echo.Context) error {
 
 func handleCompletedCheckoutSession(session stripe.CheckoutSession) {
 	// Fulfill the purchase.
+	// here is where the transaction record is updated, with a completed status
+	log.Println("handleCompletedCheckoutSession")
+	log.Println(session.ID)
+}
+
+func handleSuccessfulPaymentIntent(intent stripe.PaymentIntent) {
 
 	// here is where the transaction record is updated, with a completed status
-	log.Println(session.ID)
+	log.Println("handleSuccessfulPaymentIntent")
+	log.Println(intent.Amount)
+	amount := intent.Amount
+	userSelector := ""
+	if _, ok := intent.Metadata["userSelector"]; ok {
+		log.Println("got meta!")
+		log.Println(intent.Metadata["userSelector"])
+		userSelector = intent.Metadata["userSelector"]
+	} else {
+		log.Println("no meta!")
+	}
+
+	type SSPaymentIntent struct {
+		Amount       int64  `json:"amount"`
+		UserSelector string `json:"userSelector"`
+	}
+
+	// channel, _ := SocketServer.GetChannel(userSelector)
+	// channel.Emit("payment-complete", SSPaymentIntent{
+	// 	Amount:       amount,
+	// 	UserSelector: userSelector,
+	// })
+
+	SocketServer.BroadcastToRoom("", userSelector, "payment-complete", SSPaymentIntent{
+		Amount:       amount,
+		UserSelector: userSelector,
+	})
+
+}
+
+func handleSuccessfulCharge(ch stripe.Charge) {
+	// here is where the transaction record is updated, with a completed status
+	log.Println("handleSuccessfulCharge")
+	if _, ok := ch.Metadata["userSelector"]; ok {
+		log.Println(ch.Metadata["userSelector"])
+	} else {
+		log.Println("no meta!")
+	}
 }

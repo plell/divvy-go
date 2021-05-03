@@ -80,7 +80,7 @@ func insertStaticRecords() {
 }
 
 func CreateSuperUser() {
-	hashedPassword := HashAndSalt("!7AM3allet")
+	hashedPassword := HashAndSalt("pass")
 
 	user := User{
 		Username:    "plelldavid@gmail.com",
