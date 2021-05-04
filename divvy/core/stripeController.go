@@ -789,10 +789,26 @@ func handleCompletedCheckoutSession(session stripe.CheckoutSession) {
 	// here is where the transaction record is updated, with a completed status
 	log.Println("handleCompletedCheckoutSession")
 	log.Println(session.ID)
+
+	// here is where the transaction record is updated, with a completed status
+	userSelector := ""
+	if _, ok := session.PaymentIntent.Metadata["userSelector"]; ok {
+		log.Println("got meta!")
+		log.Println(session.PaymentIntent.Metadata["userSelector"])
+		userSelector = session.PaymentIntent.Metadata["userSelector"]
+	} else {
+		log.Println("no meta!")
+		return
+	}
+
+	WebsocketWriter(&SocketMessage{
+		Amount:       session.PaymentIntent.Amount,
+		SessionID:    session.ID,
+		UserSelector: userSelector,
+	})
 }
 
 func handleSuccessfulPaymentIntent(intent stripe.PaymentIntent) {
-
 	// here is where the transaction record is updated, with a completed status
 	log.Println("handleSuccessfulPaymentIntent")
 	log.Println(intent.Amount)
@@ -806,19 +822,9 @@ func handleSuccessfulPaymentIntent(intent stripe.PaymentIntent) {
 		log.Println("no meta!")
 	}
 
-	type SSPaymentIntent struct {
-		Amount       int64  `json:"amount"`
-		UserSelector string `json:"userSelector"`
-	}
-
-	// channel, _ := SocketServer.GetChannel(userSelector)
-	// channel.Emit("payment-complete", SSPaymentIntent{
-	// 	Amount:       amount,
-	// 	UserSelector: userSelector,
-	// })
-
-	SocketServer.BroadcastToRoom("", userSelector, "payment-complete", SSPaymentIntent{
+	WebsocketWriter(&SocketMessage{
 		Amount:       amount,
+		SessionID:    userSelector,
 		UserSelector: userSelector,
 	})
 
@@ -826,10 +832,21 @@ func handleSuccessfulPaymentIntent(intent stripe.PaymentIntent) {
 
 func handleSuccessfulCharge(ch stripe.Charge) {
 	// here is where the transaction record is updated, with a completed status
-	log.Println("handleSuccessfulCharge")
+	log.Println("handleSuccessfulPaymentIntent")
+	log.Println(ch.Amount)
+	amount := ch.Amount
+	userSelector := ""
 	if _, ok := ch.Metadata["userSelector"]; ok {
+		log.Println("got meta!")
 		log.Println(ch.Metadata["userSelector"])
+		userSelector = ch.Metadata["userSelector"]
 	} else {
 		log.Println("no meta!")
 	}
+
+	WebsocketWriter(&SocketMessage{
+		Amount:       amount,
+		SessionID:    userSelector,
+		UserSelector: userSelector,
+	})
 }

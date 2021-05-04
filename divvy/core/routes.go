@@ -1,16 +1,15 @@
 package core
 
 import (
-	socketio "github.com/googollee/go-socket.io"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
 
-var SocketServer *socketio.Server
+// var SocketServer *socketio.Server
 
 func MakeRoutes(e *echo.Echo) {
 	// socket.io server connection
-	SocketServer = MakeSocketServer()
+	// SocketServer = MakeSocketServer()
 
 	// stripe webhook listener
 	e.Any("/webhook", echo.HandlerFunc(HandleStripeWebhook))
@@ -51,10 +50,18 @@ func MakeRoutes(e *echo.Echo) {
 	r.POST("/verify/:verificationCode", VerifyAccountEmail)
 	r.POST("/sendVerification", SendVerificationEmail)
 
-	e.Any("/socket.io/", func(context echo.Context) error {
-		SocketServer.ServeHTTP(context.Response(), context.Request())
-		return nil
-	})
+	e.Any("/ws/:userSelector", echo.HandlerFunc(WsEndpoint))
+
+	// e.Any("/socket.io/", func(context echo.Context) error {
+	// 	SocketServer.ServeHTTP(context.Response(), context.Request())
+
+	// 	log.Println("context.Response()")
+	// 	log.Println(context.Response())
+
+	// 	log.Println("context.Request()")
+	// 	log.Println(context.Request())
+	// 	return nil
+	// })
 
 	// s: require token, pod collaborator
 	s := r.Group("")

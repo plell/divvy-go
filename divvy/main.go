@@ -54,6 +54,8 @@ func main() {
 	})
 	c.Start()
 
+	go core.RunWebsocketBroker()
+
 	fmt.Println("start 8000 server!")
 	// Start server
 	e.Logger.Fatal(e.Start(":8000"))
