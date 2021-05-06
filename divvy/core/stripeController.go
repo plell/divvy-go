@@ -247,6 +247,10 @@ func CreateCheckoutSession(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "no collaborator")
 	}
 
+	if collaborator.RoleTypeID == ROLE_TYPE_LIMITED {
+		return c.String(http.StatusInternalServerError, "Limited collaborator: action not allowed.")
+	}
+
 	if request.Amount < 100 {
 		return c.String(http.StatusInternalServerError, "Amount minimum is 1USD")
 	}
@@ -576,7 +580,7 @@ func DoChargeTransfersAndRefundsCron() {
 
 		if refundsAreRisky(refundGroup, allCharges) {
 			// reject! too many refunds
-			SendRefundLimitEmail(collaborators)
+			SendRefundLimitEmail(pod.Selector)
 		} else {
 			// process refunds
 			for _, chargeToRefund := range refundGroup {
@@ -756,7 +760,6 @@ func GetPodTransferList(c echo.Context) error {
 func ScheduleRefund(c echo.Context) error {
 	stripe.Key = getStripeKey()
 	// get from params
-	log.Println("ScheduleRefund")
 	txnId := c.Param("txnId")
 
 	// get charge
@@ -768,12 +771,17 @@ func ScheduleRefund(c echo.Context) error {
 		return AbstractError(c, "Something went wrong")
 	}
 
+	err = doChargePermissions(ch, c)
+	if err != nil {
+		return err
+	}
+
 	params := &stripe.ChargeParams{}
 
 	t := time.Now().String()
 	params.AddMetadata("toRefund", t)
 
-	updatedCharge, err := charge.Update(
+	_, err = charge.Update(
 		ch.ID,
 		params,
 	)
@@ -781,9 +789,53 @@ func ScheduleRefund(c echo.Context) error {
 		return AbstractError(c, "Something went wrong")
 	}
 
-	log.Println(updatedCharge)
+	// send email to all collaborators
+	podSelector := c.Param("podSelector")
+	SendRefundScheduledEmail(podSelector)
 
 	return c.String(http.StatusOK, "Refund scheduled. Allow time for processing.")
+}
+
+func doChargePermissions(ch *stripe.Charge, c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	chPodSelector := ""
+	chCollaboratorSelector := ""
+
+	if _, ok := ch.Metadata["podSelector"]; ok {
+		chPodSelector = ch.Metadata["podSelector"]
+	}
+	if _, ok := ch.Metadata["collaboratorSelector"]; ok {
+		chCollaboratorSelector = ch.Metadata["collaboratorSelector"]
+	}
+
+	// get pod to check permission
+	pod := Pod{}
+	result := DB.Where("selector = ?", chPodSelector).First(&pod)
+	if result.Error != nil {
+		return AbstractError(c, "No pod")
+	}
+
+	// get collaborator to check permission
+	collaborator := Collaborator{}
+	result = DB.Where("pod_id = ?", pod.ID).Where("user_id = ?", user_id).First(&collaborator)
+	if result.Error != nil {
+		return AbstractError(c, "No collaborator")
+	}
+
+	if collaborator.RoleTypeID == ROLE_TYPE_LIMITED {
+		return AbstractError(c, "Limited collaborator: action not allowed")
+	}
+	if collaborator.RoleTypeID == ROLE_TYPE_BASIC {
+		if collaborator.Selector != chCollaboratorSelector {
+			return AbstractError(c, "Basic collaborator: action not allowed")
+		}
+	}
+
+	return nil
 }
 
 func CancelScheduledRefund(c echo.Context) error {
@@ -793,10 +845,19 @@ func CancelScheduledRefund(c echo.Context) error {
 	txnId := c.Param("txnId")
 
 	// get charge
-	ch, _ := charge.Get(
+	ch, err := charge.Get(
 		txnId,
 		nil,
 	)
+
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	err = doChargePermissions(ch, c)
+	if err != nil {
+		return err
+	}
 
 	if ch.Refunded {
 		return c.String(http.StatusInternalServerError, "Already refunded.")
@@ -806,10 +867,17 @@ func CancelScheduledRefund(c echo.Context) error {
 
 	params.AddMetadata("toRefund", "cancelled")
 
-	updatedCharge, _ := charge.Update(
+	updatedCharge, err := charge.Update(
 		ch.ID,
 		params,
 	)
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	// send email to all collaborators
+	podSelector := c.Param("podSelector")
+	SendRefundCancelledEmail(podSelector)
 
 	return c.JSON(http.StatusOK, updatedCharge)
 }
@@ -856,6 +924,16 @@ func HandleStripeWebhook(c echo.Context) error {
 
 	log.Println(event.Type)
 
+	if event.Type == "balance.available" {
+		var b stripe.Balance
+		err := json.Unmarshal(event.Data.Raw, &b)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing webhook JSON: %v\n", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return c.String(http.StatusOK, "ok")
+		}
+		handleBalanceAvailable(b)
+	}
 	if event.Type == "charge.succeeded" {
 		var ch stripe.Charge
 		err := json.Unmarshal(event.Data.Raw, &ch)
@@ -955,4 +1033,12 @@ func handleSuccessfulCharge(ch stripe.Charge) {
 		PaymentIntentID: ch.PaymentIntent.ID,
 		UserSelector:    userSelector,
 	})
+}
+
+func handleBalanceAvailable(b stripe.Balance) {
+	log.Println("handleBalanceAvailable")
+	log.Println(b)
+	log.Println(b.Available)
+
+	// if we can transfer at this stage, transfer!
 }

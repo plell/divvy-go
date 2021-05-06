@@ -20,6 +20,12 @@ var SENDGRID_REFUND_LIMIT_TEMPLATE = "d-5ee1dfa663414d14b194eb770b8b65ef"
 var SENDGRID_PW_RESET_TEMPLATE = "d-f05cdb7f762e48d0a1188f3b0173163d"
 var SENDGRID_BETA_INVITE_TEMPLATE = "d-f05cdb7f762e48d0a1188f3b0173163d"
 
+var SENDGRID_REFUND_SCHEDULED_TEMPLATE = "d-18dc29d5d64f4c20ac09a6d9ca4aeea2"
+var SENDGRID_REFUND_CANCELLED_TEMPLATE = "d-d376ac9bf2194d53940f156308215b6f"
+var SENDGRID_WALLET_UPDATED_TEMPLATE = "d-8d0ae75cf44d42f08b3142725f18f45c"
+var SENDGRID_WALLET_JOINED_TEMPLATE = "d-6fdd284b1b054066828410fefa25c94b"
+var SENDGRID_WALLET_DESTROYED_TEMPLATE = "d-a72b5e54002a4b50a055f68862bea2f8"
+
 type InviteCreator struct {
 	Email       string `json:"email"`
 	PodSelector string `json:"podSelector"`
@@ -166,16 +172,19 @@ func SendPasswordReset(c echo.Context) error {
 	return c.String(http.StatusOK, "Success!")
 }
 
-func SendRefundLimitEmail(collaborators []Collaborator) {
+func SendRefundLimitEmail(podSelector string) {
 	log.Println("SendRefundLimitEmail")
 
-	dd := []DynamicData{}
-
+	collaborators, podName, err := getCollaboratorsFromPodSelector(podSelector)
+	if err != nil {
+		return
+	}
 	// list refunds that were cancelled
-	// dd = append(dd, DynamicData{
-	// 	Key:   "verificationCode",
-	// 	Value: verificationCode.Code,
-	// })
+	dd := []DynamicData{}
+	dd = append(dd, DynamicData{
+		Key:   "walletName",
+		Value: podName,
+	})
 
 	emails := []string{}
 	// email all collaborators
@@ -185,6 +194,157 @@ func SendRefundLimitEmail(collaborators []Collaborator) {
 	}
 
 	SendEmail("refunds", SENDGRID_REFUND_LIMIT_TEMPLATE, emails, dd)
+}
+
+func getCollaboratorsFromPodSelector(podSelector string) ([]Collaborator, string, error) {
+	var throwerror error = nil
+	pod := Pod{}
+	collaborators := []Collaborator{}
+
+	result := DB.Where("selector = ?", podSelector).First(&pod)
+	if result.Error != nil {
+		throwerror = nil
+	}
+
+	result = DB.Preload("User").Where("pod_id = ?", pod.ID).Find(&collaborators)
+	if result.Error != nil {
+		throwerror = nil
+	}
+
+	podName := pod.Name
+
+	return collaborators, podName, throwerror
+}
+
+func getCollaboratorsFromPodID(podID uint) ([]Collaborator, string, error) {
+	var throwerror error = nil
+	pod := Pod{}
+	collaborators := []Collaborator{}
+
+	result := DB.First(&pod, podID)
+	if result.Error != nil {
+		throwerror = nil
+	}
+
+	result = DB.Preload("User").Where("pod_id = ?", podID).Find(&collaborators)
+	if result.Error != nil {
+		throwerror = nil
+	}
+
+	podName := pod.Name
+
+	return collaborators, podName, throwerror
+}
+
+func SendRefundScheduledEmail(podSelector string) {
+	log.Println("SendRefundScheduledEmail")
+
+	collaborators, podName, err := getCollaboratorsFromPodSelector(podSelector)
+	if err != nil {
+		return
+	}
+
+	dd := []DynamicData{}
+	dd = append(dd, DynamicData{
+		Key:   "walletName",
+		Value: podName,
+	})
+	emails := []string{}
+	// email all collaborators
+	for _, clbrtr := range collaborators {
+		user := clbrtr.User
+		emails = append(emails, user.Username)
+	}
+
+	SendEmail("refunds", SENDGRID_REFUND_SCHEDULED_TEMPLATE, emails, dd)
+}
+
+func SendRefundCancelledEmail(podSelector string) {
+	log.Println("SendRefundScheduledEmail")
+
+	collaborators, podName, err := getCollaboratorsFromPodSelector(podSelector)
+	if err != nil {
+		return
+	}
+	dd := []DynamicData{}
+	dd = append(dd, DynamicData{
+		Key:   "walletName",
+		Value: podName,
+	})
+	emails := []string{}
+	// email all collaborators
+	for _, clbrtr := range collaborators {
+		user := clbrtr.User
+		emails = append(emails, user.Username)
+	}
+
+	SendEmail("refunds", SENDGRID_REFUND_CANCELLED_TEMPLATE, emails, dd)
+}
+
+func SendWalletUpdatedEmail(podSelector string) {
+	log.Println("SendRefundScheduledEmail")
+
+	collaborators, podName, err := getCollaboratorsFromPodSelector(podSelector)
+	if err != nil {
+		return
+	}
+	dd := []DynamicData{}
+	dd = append(dd, DynamicData{
+		Key:   "walletName",
+		Value: podName,
+	})
+	emails := []string{}
+	// email all collaborators
+	for _, clbrtr := range collaborators {
+		user := clbrtr.User
+		emails = append(emails, user.Username)
+	}
+
+	SendEmail("notification", SENDGRID_WALLET_UPDATED_TEMPLATE, emails, dd)
+}
+
+func SendWalletJoinedEmail(podID uint) {
+	log.Println("SendRefundScheduledEmail")
+
+	collaborators, podName, err := getCollaboratorsFromPodID(podID)
+	if err != nil {
+		return
+	}
+	dd := []DynamicData{}
+	dd = append(dd, DynamicData{
+		Key:   "walletName",
+		Value: podName,
+	})
+	emails := []string{}
+	// email all collaborators
+	for _, clbrtr := range collaborators {
+		user := clbrtr.User
+		emails = append(emails, user.Username)
+	}
+
+	SendEmail("notification", SENDGRID_WALLET_JOINED_TEMPLATE, emails, dd)
+}
+
+func SendWalletDestroyedEmail(podSelector string) {
+	log.Println("SendRefundScheduledEmail")
+
+	collaborators, podName, err := getCollaboratorsFromPodSelector(podSelector)
+	if err != nil {
+		return
+	}
+	dd := []DynamicData{}
+	dd = append(dd, DynamicData{
+		Key:   "walletName",
+		Value: podName,
+	})
+	emails := []string{}
+	// email all collaborators
+	for _, clbrtr := range collaborators {
+		user := clbrtr.User
+		emails = append(emails, user.Username)
+	}
+
+	SendEmail("notification", SENDGRID_WALLET_DESTROYED_TEMPLATE, emails, dd)
 }
 
 func SendVerificationEmail(c echo.Context) error {
@@ -289,3 +449,5 @@ func Direct_SendVerificationEmail(user User) {
 
 	SendEmail("verification", SENDGRID_VERIFICATION_TEMPLATE, emails, dd)
 }
+
+// send email to all collaborators

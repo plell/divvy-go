@@ -128,6 +128,9 @@ func UpdatePod(c echo.Context) error {
 		LifecycleTypeId: pod.LifecycleTypeId,
 	}
 
+	// send email to all collaborators
+	SendWalletUpdatedEmail(pod.Selector)
+
 	return c.JSON(http.StatusOK, podResponse)
 }
 
@@ -289,6 +292,9 @@ func JoinPod(c echo.Context) error {
 	// delete the invite, its been used
 	DB.Delete(&invite)
 
+	// send email to all collaborators
+	SendWalletJoinedEmail(invite.PodID)
+
 	return c.String(http.StatusOK, "Welcome to the party")
 }
 
@@ -318,11 +324,6 @@ func GetInvites(c echo.Context) error {
 }
 
 func DeleteInvite(c echo.Context) error {
-	// user_id, err := GetUserIdFromToken(c)
-	// if err != nil {
-	// 	return AbstractError(c,"Something went wrong")
-	// }
-
 	selector := c.Param("selector")
 
 	// get user
@@ -351,6 +352,9 @@ func ScheduleDestroyPod(c echo.Context) error {
 	if result.Error != nil {
 		return AbstractError(c, "Couldn't find user")
 	}
+
+	// send email to all collaborators
+	SendWalletDestroyedEmail(podSelector)
 
 	responseString := pod.Name + " will be deleted when payouts are finished."
 	return c.String(http.StatusOK, responseString)
