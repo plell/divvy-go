@@ -27,6 +27,11 @@ func MakeRoutes(e *echo.Echo) {
 	b.Use(HasBetaKey)
 	b.POST("/user", CreateUser)
 
+	// userSelector required
+	u := e.Group("")
+	u.Use(UserExists)
+	u.Any("/ws/:userSelector", echo.HandlerFunc(WsEndpoint))
+
 	mySigningKey := GetSigningKey()
 
 	// r: requires token
@@ -49,19 +54,6 @@ func MakeRoutes(e *echo.Echo) {
 	r.GET("/stripe/account", GetStripeAccount)
 	r.POST("/verify/:verificationCode", VerifyAccountEmail)
 	r.POST("/sendVerification", SendVerificationEmail)
-
-	e.Any("/ws/:userSelector", echo.HandlerFunc(WsEndpoint))
-
-	// e.Any("/socket.io/", func(context echo.Context) error {
-	// 	SocketServer.ServeHTTP(context.Response(), context.Request())
-
-	// 	log.Println("context.Response()")
-	// 	log.Println(context.Response())
-
-	// 	log.Println("context.Request()")
-	// 	log.Println(context.Request())
-	// 	return nil
-	// })
 
 	// s: require token, pod collaborator
 	s := r.Group("")

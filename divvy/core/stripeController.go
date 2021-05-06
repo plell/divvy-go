@@ -76,16 +76,6 @@ func getTotalAmountAfterFees(amount int64) int64 {
 
 	amountMinusFees := amount - stripeFees - jamFees
 
-	log.Println("getTotalAmountAfterFees")
-	log.Println("total")
-	log.Println(amount)
-	log.Println("stripeFees")
-	log.Println(stripeFees)
-	log.Println("jamFees")
-	log.Println(jamFees)
-	log.Println("amountMinusFees")
-	log.Println(amountMinusFees)
-
 	return amountMinusFees
 }
 
@@ -205,7 +195,8 @@ func LinkStripeAccount(c echo.Context) error {
 }
 
 type CreateCheckoutSessionResponse struct {
-	SessionID string `json:"sessionId"`
+	SessionID       string `json:"sessionId"`
+	PaymentIntentID string `json:"paymentIntentId"`
 }
 
 type CheckoutSessionRequest struct {
@@ -310,10 +301,35 @@ func CreateCheckoutSession(c echo.Context) error {
 	}
 
 	data := CreateCheckoutSessionResponse{
-		SessionID: session.ID,
+		SessionID:       session.ID,
+		PaymentIntentID: session.PaymentIntent.ID,
 	}
 
 	return c.JSON(http.StatusOK, data)
+}
+
+func getAdminAndNonadminCounts(collaborators []Collaborator) (int64, int64) {
+
+	admins := []Collaborator{}
+	nonadmins := []Collaborator{}
+
+	for _, c := range collaborators {
+		if c.RoleTypeID == ROLE_TYPE_ADMIN {
+			admins = append(admins, c)
+		} else {
+			nonadmins = append(nonadmins, c)
+		}
+	}
+
+	adminCount := int64(len(admins))
+	nonadminCount := int64(len(nonadmins))
+
+	log.Println("adminCount")
+	log.Println(adminCount)
+	log.Println("nonadminCount")
+	log.Println(nonadminCount)
+
+	return adminCount, nonadminCount
 }
 
 func getCollaboratorTransferAmount(amountAfterFees int64, collaboratorLength int64) int64 {
@@ -323,35 +339,71 @@ func getCollaboratorTransferAmount(amountAfterFees int64, collaboratorLength int
 	return transferAmount
 }
 
+func getCollaboratorTransferAmountTilted(collaborator Collaborator, amountAfterFees int64, adminCount int64, nonadminCount int64, payoutTypeId uint) int64 {
+
+	adminClaims := 0.25 // 25%
+	if payoutTypeId == POD_PAYOUT_ADMIN50 {
+		adminClaims = 0.50 // 50%
+	} else if payoutTypeId == POD_PAYOUT_ADMIN75 {
+		adminClaims = 0.75 // 50%
+	}
+
+	// if there are no nonadmins, admins get 100%
+	if nonadminCount < 1 {
+		adminClaims = 1
+	} else if adminCount < 1 {
+		// this should never happen,
+		// wallets are required to have at least 1 admin
+		adminClaims = 0
+	}
+
+	adminAmountAfterFees := int64(float64(amountAfterFees) * adminClaims)
+	nonadminAmountAfterFees := amountAfterFees - adminAmountAfterFees
+
+	transferAmount := int64(0)
+	if collaborator.RoleTypeID == ROLE_TYPE_ADMIN {
+		// is admin
+		transferAmount = adminAmountAfterFees / adminCount
+		log.Println("transferAmount per admin")
+		log.Println(transferAmount)
+	} else {
+		transferAmount = nonadminAmountAfterFees / nonadminCount
+		log.Println("transferAmount per nonadmin")
+		log.Println(transferAmount)
+	}
+
+	return transferAmount
+}
+
 // this is a cron job!
 func DoChargeTransfersAndRefundsCron() {
-	log.Println("DoTransfers")
+	log.Println("DoChargeTransfersAndRefundsCron")
 	stripe.Key = getStripeKey()
 
 	// get account balance
 	b, err := balance.Get(nil)
 	if err != nil {
-		log.Println("you got an error!")
+		log.Println("error getting balance! quit cron")
 		log.Println(err)
+		return
 	}
 
-	// totalBalance := 0
-	log.Println("jam balance")
-	log.Println(b)
+	availableBalance := int64(0)
 
 	if len(b.Available) > 0 {
-		log.Println("do balance stuff")
-		// for _, am := range b.Available {
-		// totalBalance = totalBalance + am.Amount
-		// }
+		for _, availableCharge := range b.Available {
+			availableBalance += availableCharge.Value
+		}
 	}
 
+	log.Println("availableBalance")
+	log.Println(availableBalance)
 	// get all pods, then do a for loop
 	pods := []Pod{}
-
-	DB.Find(&pods)
-
-	transferError := false
+	result := DB.Find(&pods)
+	if result.Error != nil {
+		return
+	}
 
 	for _, pod := range pods {
 
@@ -369,12 +421,18 @@ func DoChargeTransfersAndRefundsCron() {
 			}
 		}
 
+		log.Println("POD NAME")
+		log.Println(pod.Name)
+
 		if len(collaborators) < 1 {
 			log.Println("NO COLLABORATORS FOR POD! This should never happen")
 			log.Println(pod.ID)
 			continue
 		}
 
+		// get counts of admin and nonadmin
+		adminCount, nonadminCount := getAdminAndNonadminCounts(collaborators)
+		collaboratorLength := int64(len(collaborators))
 		// get charges for pod
 		params := &stripe.ChargeListParams{
 			TransferGroup: stripe.String(pod.Selector),
@@ -418,25 +476,43 @@ func DoChargeTransfersAndRefundsCron() {
 			}
 
 			chargeParams := &stripe.ChargeParams{}
-			amountAfterFees := getTotalAmountAfterFees(c.Amount)
+			amountAfterFees := int64(0)
 
 			if c.Metadata["amountAfterFees"] != "" {
 				// if in metadata, take it from there, stay consistant
 				aaf, err := strconv.Atoi(c.Metadata["amountAfterFees"])
 				if err == nil {
+					log.Println("got amount after fees from metadata!")
 					amountAfterFees = int64(aaf)
 				}
 			}
 
-			collaboratorTransferAmount := getCollaboratorTransferAmount(amountAfterFees, int64(len(collaborators)))
+			if amountAfterFees < 1 {
+				log.Println("amountAfterFees is 0!!")
+				continue
+			}
+			// check that account balance is more than amountAfterFees
+			if amountAfterFees > availableBalance {
+				log.Println("*******************************")
+				log.Println("availableBalance")
+				log.Println(availableBalance)
+				log.Println("amountAfterFees is greater than availableBalance, wait to transfer")
+				log.Println(amountAfterFees)
+				continue
+			}
 
 			for c_i, collaborator := range collaborators {
 
-				if transferError {
-					// if there was a transfer error below, skip transfers
-					// probably a funds_insufficient error,
-					// meaning we need to wait
-					continue
+				// look at pod payout setting and split up payment!
+				collaboratorTransferAmount := int64(0)
+				if pod.PayoutTypeId == POD_PAYOUT_EVEN_SPLIT {
+					//even split
+					log.Println("POD PAYOUT IS EVEN SPLIT")
+					collaboratorTransferAmount = getCollaboratorTransferAmount(amountAfterFees, collaboratorLength)
+				} else {
+					// tilted split
+					log.Println("POD PAYOUT IS NOT EVEN SPLIT")
+					collaboratorTransferAmount = getCollaboratorTransferAmountTilted(collaborator, amountAfterFees, adminCount, nonadminCount, pod.PayoutTypeId)
 				}
 
 				userSelector := collaborator.User.Selector
@@ -466,8 +542,7 @@ func DoChargeTransfersAndRefundsCron() {
 
 				if err != nil {
 					log.Println("TRANSFER ERROR!")
-					log.Println(err)
-					transferError = true
+					log.Println(err.Error())
 					continue
 				}
 
@@ -582,6 +657,20 @@ type ChargeList struct {
 	ID     string `json:"id"`
 }
 
+type ChargeListItem struct {
+	ID                string            `json:"id"`
+	PaymentMethodCard PaymentMethodCard `json:"paymentMethodCard"`
+	Amount            int64             `json:"amount"`
+	Refunded          bool              `json:"refunded"`
+	Metadata          map[string]string `json:"metadata"`
+	Created           int64             `json:"created"`
+}
+
+type PaymentMethodCard struct {
+	Network stripe.PaymentMethodCardNetwork `json:"network"`
+	Last4   string                          `json:"last4"`
+}
+
 func GetPodChargeList(c echo.Context) error {
 
 	// get from params
@@ -591,14 +680,29 @@ func GetPodChargeList(c echo.Context) error {
 
 	params := &stripe.ChargeListParams{
 		TransferGroup: stripe.String(podSelector),
+		CreatedRange: &stripe.RangeQueryParams{
+			GreaterThan: time.Now().AddDate(0, 0, -30).Unix(), // last 30 days
+		},
 	}
 
-	charges := []*stripe.Charge{}
-	// params.Filters.AddFilter("limit", "", "3")
+	params.Filters.AddFilter("limit", "", "3")
+
+	charges := []ChargeListItem{}
 	i := charge.List(params)
 	for i.Next() {
 		c := i.Charge()
-		charges = append(charges, c)
+		o := ChargeListItem{
+			ID: c.ID,
+			PaymentMethodCard: PaymentMethodCard{
+				Last4:   c.PaymentMethodDetails.Card.Last4,
+				Network: c.PaymentMethodDetails.Card.Network,
+			},
+			Amount:   c.Amount,
+			Refunded: c.Refunded,
+			Metadata: c.Metadata,
+			Created:  c.Created,
+		}
+		charges = append(charges, o)
 	}
 
 	return c.JSON(http.StatusOK, charges)
@@ -723,6 +827,8 @@ func CancelScheduledRefund(c echo.Context) error {
 
 // webhooks
 // session checkout complete
+
+// stripe listen --forward-to localhost:8000/webhook
 func HandleStripeWebhook(c echo.Context) error {
 	w := c.Response().Writer
 	req := c.Request()
@@ -792,19 +898,19 @@ func handleCompletedCheckoutSession(session stripe.CheckoutSession) {
 
 	// here is where the transaction record is updated, with a completed status
 	userSelector := ""
-	if _, ok := session.PaymentIntent.Metadata["userSelector"]; ok {
+	if _, ok := session.Metadata["userSelector"]; ok {
 		log.Println("got meta!")
-		log.Println(session.PaymentIntent.Metadata["userSelector"])
-		userSelector = session.PaymentIntent.Metadata["userSelector"]
+		log.Println(session.Metadata["userSelector"])
+		userSelector = session.Metadata["userSelector"]
 	} else {
 		log.Println("no meta!")
 		return
 	}
 
 	WebsocketWriter(&SocketMessage{
-		Amount:       session.PaymentIntent.Amount,
-		SessionID:    session.ID,
-		UserSelector: userSelector,
+		Amount:          session.AmountTotal,
+		PaymentIntentID: session.PaymentIntent.ID,
+		UserSelector:    userSelector,
 	})
 }
 
@@ -823,9 +929,9 @@ func handleSuccessfulPaymentIntent(intent stripe.PaymentIntent) {
 	}
 
 	WebsocketWriter(&SocketMessage{
-		Amount:       amount,
-		SessionID:    userSelector,
-		UserSelector: userSelector,
+		Amount:          amount,
+		PaymentIntentID: intent.ID,
+		UserSelector:    userSelector,
 	})
 
 }
@@ -845,8 +951,8 @@ func handleSuccessfulCharge(ch stripe.Charge) {
 	}
 
 	WebsocketWriter(&SocketMessage{
-		Amount:       amount,
-		SessionID:    userSelector,
-		UserSelector: userSelector,
+		Amount:          amount,
+		PaymentIntentID: ch.PaymentIntent.ID,
+		UserSelector:    userSelector,
 	})
 }

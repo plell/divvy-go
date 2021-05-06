@@ -112,3 +112,18 @@ func IsPodMember(next echo.HandlerFunc) echo.HandlerFunc {
 		return next(c)
 	}
 }
+
+func UserExists(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		userSelector := c.Param("userSelector")
+		log.Println("UserExists?")
+		user := User{}
+		result := DB.Where("selector = ?", userSelector).First(&user)
+
+		if result.Error != nil {
+			return c.String(http.StatusUnauthorized, "Unauthorized")
+		}
+
+		return next(c)
+	}
+}
