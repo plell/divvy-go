@@ -668,6 +668,7 @@ type ChargeListItem struct {
 	Refunded          bool              `json:"refunded"`
 	Metadata          map[string]string `json:"metadata"`
 	Created           int64             `json:"created"`
+	Paid              bool              `json:"paid"`
 }
 
 type PaymentMethodCard struct {
@@ -705,6 +706,7 @@ func GetPodChargeList(c echo.Context) error {
 			Refunded: c.Refunded,
 			Metadata: c.Metadata,
 			Created:  c.Created,
+			Paid:     c.Paid,
 		}
 		charges = append(charges, o)
 	}

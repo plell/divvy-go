@@ -42,12 +42,15 @@ func WsEndpoint(c echo.Context) error {
 	log.Println("client connected!!")
 
 	defer ws.Close()
+
+	// heartbeat
+	// use this for to accept ping from client
+	// and send it back to client
 	for {
 		mt, message, err := ws.ReadMessage()
 		if err != nil {
 			return err
 		}
-		log.Printf("recv: %s", message)
 		err = ws.WriteMessage(mt, message)
 		if err != nil {
 			return err
