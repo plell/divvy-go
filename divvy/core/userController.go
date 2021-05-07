@@ -55,12 +55,13 @@ func CreateUser(c echo.Context) error {
 		DisplayName: req.DisplayName,
 		City:        req.City,
 		Selector:    MakeSelector(USER_TABLE),
+		UserTypeID:  USER_TYPE_BASIC,
 	}
 
 	result := DB.Create(&user) // pass pointer of data to Create
 
 	if result.Error != nil {
-		return AbstractError(c, "Couldn't create user")
+		return AbstractError(c, result.Error.Error())
 	}
 
 	avatar := Avatar{

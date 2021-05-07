@@ -298,6 +298,50 @@ func JoinPod(c echo.Context) error {
 	return c.String(http.StatusOK, "Welcome to the party")
 }
 
+func GetJoinPod(c echo.Context) error {
+	req := PodJoiner{}
+	defer c.Request().Body.Close()
+	err := json.NewDecoder(c.Request().Body).Decode(&req)
+	if err != nil {
+		return AbstractError(c, "Couldn't read request")
+	}
+
+	invite := Invite{}
+	result := DB.Where("code = ?", req.Code).First(&invite)
+	if result.Error != nil {
+		return AbstractError(c, "This code is not valid")
+	}
+
+	log.Println("invite.PodID", invite.PodID)
+	log.Println(invite.PodID)
+	// get pod
+	pod := Pod{}
+	result = DB.Preload("Collaborators.User.Avatar").Preload("PayoutType").Preload("LifecycleType").First(&pod, invite.PodID)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't get wallet")
+	}
+
+	// return all avatars!
+	var avatars [][]uint
+	collaborators := pod.Collaborators
+
+	for _, col := range collaborators {
+		userAvatar := col.User.Avatar
+		builtAvatar := AvatarToArray(userAvatar)
+		avatars = append(avatars, builtAvatar)
+	}
+
+	podRes := JoiningPodAPI{
+		Name:          pod.Name,
+		Description:   pod.Description,
+		Avatars:       avatars,
+		PayoutType:    pod.PayoutType,
+		LifecycleType: pod.LifecycleType,
+	}
+
+	return c.JSON(http.StatusOK, podRes)
+}
+
 func GetInvites(c echo.Context) error {
 	// user_id, err := GetUserIdFromToken(c)
 	// if err != nil {
@@ -358,13 +402,4 @@ func ScheduleDestroyPod(c echo.Context) error {
 
 	responseString := pod.Name + " will be deleted when payouts are finished."
 	return c.String(http.StatusOK, responseString)
-}
-
-func FindAvatarByUserId(avatars []Avatar, userId uint) Avatar {
-	for _, avatar := range avatars {
-		if userId == avatar.UserID {
-			return avatar
-		}
-	}
-	return Avatar{}
 }

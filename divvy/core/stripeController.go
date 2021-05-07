@@ -690,7 +690,8 @@ func GetPodChargeList(c echo.Context) error {
 		},
 	}
 
-	params.Filters.AddFilter("limit", "", "3")
+	params.ListParams.Single = true
+	params.Filters.AddFilter("limit", "", "20")
 
 	charges := []ChargeListItem{}
 	i := charge.List(params)

@@ -36,10 +36,16 @@ func IsSuperAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		user := c.Get("user").(*jwt.Token)
 		claims := user.Claims.(*jwtCustomClaims)
-		selector := claims.UserSelector
+		user_id := claims.UserID
 		log.Println("IsSuperAdmin?")
 
-		if selector != SUPERADMIN_SELECTOR {
+		myuser := User{}
+		result := DB.First(&myuser, user_id)
+		if result.Error != nil {
+			return AbstractError(c, "Can't find user")
+		}
+
+		if myuser.UserTypeID != USER_TYPE_SUPER {
 			return c.String(http.StatusInternalServerError, "Action unauthorized.")
 		}
 

@@ -24,15 +24,17 @@ type LoginHistory struct {
 var USER_TABLE = "users"
 
 type User struct {
-	DisplayName           string        `json:"displayName"`
-	Username              string        `gorm:"type:varchar(100);unique_index" json:"username"`
-	City                  string        `json:"city"`
-	Password              string        `json:"password"`
-	PasswordResetToken    string        `json:"passwordResetToken"`
-	PasswordLastChanged   string        `json:"passwordLastChanged"`
+	DisplayName           string `json:"displayName"`
+	Username              string `gorm:"type:varchar(100);unique_index;unique" json:"username"`
+	City                  string `json:"city"`
+	Password              string `json:"password"`
+	PasswordResetToken    string `json:"passwordResetToken"`
+	PasswordLastChanged   string `json:"passwordLastChanged"`
+	UserType              UserType
+	UserTypeID            uint          `json:"userTypeId"`
 	Selector              string        `json:"selector"`
 	Verified              string        `json:"verified"` // datestring of when verified
-	Avatar                Avatar        //`gorm:"PRELOAD"` //`gorm:"ForeignKey:ID;AssociationForeignKey:UserID"`
+	Avatar                Avatar        //`gorm:"PRELOAD"`  //`gorm:"ForeignKey:ID;AssociationForeignKey:UserID"`
 	StripeAccount         StripeAccount //`gorm:"PRELOAD:false"`
 	Collaborator          []Collaborator
 	EmailVerificationCode EmailVerificationCode
@@ -99,7 +101,7 @@ type AvatarAPI struct {
 var COLLABORATOR_TABLE = "collaborators"
 
 type Collaborator struct {
-	User         User
+	User         User    //`gorm:"PRELOAD:true"`
 	UserID       uint    `json:"userId"`
 	PodID        uint    `json:"podId"`
 	Selector     string  `json:"selector"`
@@ -151,6 +153,15 @@ type PodAPI struct {
 	MemberCount     int              `json:"memberCount"`
 	PayoutType      PodPayoutType    `json:"payoutType"`
 	LifecycleType   PodLifecycleType `json:"lifecycleType"`
+}
+
+type JoiningPodAPI struct {
+	Name          string           `json:"name"`
+	Description   string           `json:"description"`
+	Avatars       [][]uint         `json:"avatars"`
+	MemberCount   int              `json:"memberCount"`
+	PayoutType    PodPayoutType    `json:"payoutType"`
+	LifecycleType PodLifecycleType `json:"lifecycleType"`
 }
 
 // add pod rules relational table
@@ -210,20 +221,30 @@ type PodRuleType struct {
 	ID   uint   `json:"id"`
 }
 
+// add pod rules "maxPrice", "minPrice"
+var USER_TYPE_TABLE = "user_types"
+
+type UserType struct {
+	Name string `json:"name"`
+	ID   uint   `json:"id"`
+}
+
 // add payout types "even", "admin25", "admin50", "admin75",
 var POD_PAYOUT_TYPE_TABLE = "pod_payout_types"
 
 type PodPayoutType struct {
-	Name string `json:"name"`
-	ID   uint   `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	ID          uint   `json:"id"`
 }
 
 // add pod rules "maxPrice", "minPrice"
 var POD_LIFECYCLE_TYPE_TABLE = "pod_lifecycle_types"
 
 type PodLifecycleType struct {
-	Name string `json:"name"`
-	ID   uint   `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	ID          uint   `json:"id"`
 }
 
 var ROLE_TYPE_TABLE = "role_types"
@@ -237,6 +258,16 @@ var BETA_KEY_TABLE = "beta_keys"
 
 type BetaKey struct {
 	BetaKey string `json:"betaKey"`
+	gorm.Model
+	ByTheBy
+}
+
+var BETA_KEY_REQUESTS_TABLE = "beta_key_requests"
+
+type BetaKeyRequest struct {
+	AcceptCode string `json:"acceptCode"`
+	Email      string `json:"email"`
+	Message    string `json:"message"`
 	gorm.Model
 	ByTheBy
 }

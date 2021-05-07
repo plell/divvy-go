@@ -1,5 +1,7 @@
 package core
 
+import "os"
+
 func MigrateUp() {
 
 	DB.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(
@@ -8,7 +10,8 @@ func MigrateUp() {
 		&PodPayoutType{},
 		&PodRuleType{},
 		&RoleType{},
-
+		&BetaKeyRequest{},
+		&UserType{},
 		&User{},
 		&Avatar{},
 		&StripeAccount{},
@@ -26,29 +29,26 @@ func MigrateUp() {
 }
 
 func insertStaticRecords() {
-	// make superuser
-	user := User{}
-	result := DB.Where("username = ?", "plelldavid@gmail.com").First(&user)
-	if result.Error != nil {
-		CreateSuperUser()
-	}
+	DB.Exec(`TRUNCATE TABLE user_types`)
+	ut := UserType{Name: "Basic", ID: USER_TYPE_BASIC}
+	DB.Create(&ut)
+	ut = UserType{Name: "Super", ID: USER_TYPE_SUPER}
+	DB.Create(&ut)
 
-	// make pod traits
 	DB.Exec(`TRUNCATE TABLE pod_payout_types`)
-	pt := PodPayoutType{Name: "Even Split", ID: POD_PAYOUT_EVEN_SPLIT}
+	pt := PodPayoutType{Name: "Even Split", ID: POD_PAYOUT_EVEN_SPLIT, Description: "All members split sales evenly."}
 	DB.Create(&pt)
-	pt = PodPayoutType{Name: "Admins get 25%", ID: POD_PAYOUT_ADMIN25}
+	pt = PodPayoutType{Name: "Admins get 25%", ID: POD_PAYOUT_ADMIN25, Description: "Admin members split 25%, others split the rest."}
 	DB.Create(&pt)
-	pt = PodPayoutType{Name: "Admins get 50%", ID: POD_PAYOUT_ADMIN50}
+	pt = PodPayoutType{Name: "Admins get 50%", ID: POD_PAYOUT_ADMIN50, Description: "Admin members split 50%, others split the rest."}
 	DB.Create(&pt)
-	pt = PodPayoutType{Name: "Admins get 75%", ID: POD_PAYOUT_ADMIN75}
+	pt = PodPayoutType{Name: "Admins get 75%", ID: POD_PAYOUT_ADMIN75, Description: "Admin members split 75%, others split the rest."}
 	DB.Create(&pt)
 
-	// make pod traits
 	DB.Exec(`TRUNCATE TABLE pod_lifecycle_types`)
-	lt := PodLifecycleType{Name: "Collective", ID: POD_LIFECYCLE_COLLECTIVE}
+	lt := PodLifecycleType{Name: "Collective", ID: POD_LIFECYCLE_COLLECTIVE, Description: "This wallet is an ongoing collaboration."}
 	DB.Create(&lt)
-	lt = PodLifecycleType{Name: "Event", ID: POD_LIFECYCLE_EVENT}
+	lt = PodLifecycleType{Name: "Event", ID: POD_LIFECYCLE_EVENT, Description: "This wallet is only temporary, for a specific event."}
 	DB.Create(&lt)
 
 	// make pod rule types
@@ -73,21 +73,27 @@ func insertStaticRecords() {
 	rt = RoleType{Name: "Limited", ID: ROLE_TYPE_LIMITED}
 	DB.Create(&rt)
 
-	// make beta key
-	DB.Exec(`TRUNCATE TABLE beta_keys`)
-	bk := BetaKey{BetaKey: MakeInviteCode()}
-	DB.Create(&bk)
+	// make superuser
+	user := User{}
+	superusername := os.Getenv("SUPER_ADMIN_EMAIL")
+	result := DB.Where("username = ?", superusername).First(&user)
+	if result.Error != nil {
+		CreateSuperUser()
+	}
 }
 
 func CreateSuperUser() {
-	hashedPassword := HashAndSalt("pass")
+	password := os.Getenv("SUPER_ADMIN_PASSWORD")
+	email := os.Getenv("SUPER_ADMIN_EMAIL")
+	hashedPassword := HashAndSalt(password)
 
 	user := User{
-		Username:    "plelldavid@gmail.com",
+		Username:    email,
 		Password:    hashedPassword,
 		DisplayName: "david",
 		City:        "Seattle",
-		Selector:    SUPERADMIN_SELECTOR,
+		Selector:    MakeSelector(USER_TABLE),
+		UserTypeID:  USER_TYPE_SUPER,
 	}
 
 	DB.Create(&user)

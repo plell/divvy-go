@@ -9,8 +9,6 @@ var JAM_PERCENT_FEE = .01     // 1 percent
 
 var REFUND_LIMIT = 4 //
 
-var SUPERADMIN_SELECTOR = "papajam89n3y24" //
-
 //model constants
 
 // PodRuleType
@@ -24,6 +22,10 @@ var POD_RULE_MAX_GROUP_SIZE = uint(5)
 var ROLE_TYPE_ADMIN = uint(1)
 var ROLE_TYPE_BASIC = uint(2)
 var ROLE_TYPE_LIMITED = uint(3)
+
+// UserType
+var USER_TYPE_BASIC = uint(1)
+var USER_TYPE_SUPER = uint(2)
 
 // PodType
 var POD_LIFECYCLE_COLLECTIVE = uint(1)
