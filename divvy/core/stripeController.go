@@ -1088,6 +1088,8 @@ func handleSuccessfulCharge(ch stripe.Charge) {
 		PaymentIntentID: ch.PaymentIntent.ID,
 		UserSelector:    userSelector,
 	})
+
+	SendPaymentReceivedEmail(ch)
 }
 
 func handleBalanceAvailable(b stripe.Balance) {

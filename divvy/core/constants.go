@@ -9,6 +9,8 @@ var JAM_PERCENT_FEE = .01     // 1 percent
 
 var REFUND_LIMIT = 4 //
 
+var CLIENT_URL = "http://localhost:3000/"
+
 //model constants
 
 // PodRuleType

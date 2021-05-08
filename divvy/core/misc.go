@@ -105,6 +105,7 @@ func BuildUser(user User) UserAPI {
 	return UserAPI{
 		DisplayName: user.DisplayName,
 		Username:    user.Username,
+		UserTypeID:  user.UserTypeID,
 		Selector:    user.Selector,
 		City:        user.City,
 		Verified:    user.Verified,

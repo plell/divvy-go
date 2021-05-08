@@ -45,6 +45,7 @@ type User struct {
 type UserAPI struct {
 	DisplayName string `json:"displayName"`
 	Username    string `json:"username"`
+	UserTypeID  uint   `json:"userTypeId"`
 	City        string `json:"city"`
 	Verified    string `json:"verified"` // datestring of when verified
 	Selector    string `json:"selector"`

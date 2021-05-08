@@ -22,6 +22,8 @@ func MakeRoutes(e *echo.Echo) {
 	e.POST("/recover/:username", SendPasswordReset)
 	e.POST("/recover/submit", ChangePassword)
 
+	e.POST("/beta/request", SendBetaInviteRequest)
+
 	// beta key required
 	b := e.Group("")
 	b.Use(HasBetaKey)
@@ -87,5 +89,5 @@ func MakeRoutes(e *echo.Echo) {
 	// super: requires token and superadmin
 	super := r.Group("")
 	super.Use(IsSuperAdmin)
-	super.POST("/super/sendBetaInvite", SendBetaInvite)
+	super.POST("/beta/invite", SendBetaInvite)
 }
