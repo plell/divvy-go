@@ -7,6 +7,9 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/leekchan/accounting"
+	_ "github.com/leekchan/accounting"
+	_ "github.com/shopspring/decimal"
 )
 
 func Pong(c echo.Context) error {
@@ -135,4 +138,16 @@ func BuildPod(pod Pod) PodAPI {
 		PayoutType:    pod.PayoutType,
 		LifecycleType: pod.LifecycleType,
 	}
+}
+
+func FormatAmountToString(amount int64) string {
+	// p := strconv.Itoa(int(amount))
+
+	af := float64(amount) / 100
+
+	ac := accounting.Accounting{Symbol: "$", Precision: 2}
+
+	a := ac.FormatMoney(af)
+
+	return a
 }

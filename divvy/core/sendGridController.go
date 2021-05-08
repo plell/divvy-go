@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/sendgrid/sendgrid-go"
@@ -25,6 +26,8 @@ var SENDGRID_REFUND_CANCELLED_TEMPLATE = "d-d376ac9bf2194d53940f156308215b6f"
 var SENDGRID_WALLET_UPDATED_TEMPLATE = "d-8d0ae75cf44d42f08b3142725f18f45c"
 var SENDGRID_WALLET_JOINED_TEMPLATE = "d-6fdd284b1b054066828410fefa25c94b"
 var SENDGRID_WALLET_DESTROYED_TEMPLATE = "d-a72b5e54002a4b50a055f68862bea2f8"
+
+var SENDGRID_PAYOUT_TEMPLATE = "d-a513fb876a094b90920e5159d08734fb"
 
 type InviteCreator struct {
 	Email       string `json:"email"`
@@ -279,6 +282,35 @@ func SendRefundCancelledEmail(podSelector string) {
 	}
 
 	SendEmail("refunds", SENDGRID_REFUND_CANCELLED_TEMPLATE, emails, dd)
+}
+
+// Amount           int64  `json:"amount"`
+// TransactionCount int    `json:"transactionCount"`
+// Fees             int64  `json:"fees"`
+// Email            string `json:"email"`
+// UserID           uint   `json:"userId"`
+
+func SendPayoutEmail(payout UserPayout) {
+	log.Println("SendPayoutEmail")
+
+	dd := []DynamicData{}
+	dd = append(dd, DynamicData{
+		Key:   "amount",
+		Value: FormatAmountToString(payout.Amount),
+	})
+	dd = append(dd, DynamicData{
+		Key:   "fees",
+		Value: FormatAmountToString(payout.Fees),
+	})
+	dd = append(dd, DynamicData{
+		Key:   "transactionCount",
+		Value: strconv.Itoa(payout.TransactionCount),
+	})
+
+	emails := []string{}
+	emails = append(emails, payout.Email)
+
+	SendEmail("payouts", SENDGRID_PAYOUT_TEMPLATE, emails, dd)
 }
 
 func SendWalletUpdatedEmail(podSelector string) {

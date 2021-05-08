@@ -379,6 +379,15 @@ func getCollaboratorTransferAmountTilted(collaborator Collaborator, amountAfterF
 	return transferAmount
 }
 
+// use this to send payout emails
+type UserPayout struct {
+	Amount           int64  `json:"amount"`
+	TransactionCount int    `json:"transactionCount"`
+	Fees             int64  `json:"fees"`
+	Email            string `json:"email"`
+	UserID           uint   `json:"userId"`
+}
+
 // this is a cron job!
 func DoChargeTransfersAndRefundsCron() {
 	log.Println("DoChargeTransfersAndRefundsCron")
@@ -408,6 +417,8 @@ func DoChargeTransfersAndRefundsCron() {
 	if result.Error != nil {
 		return
 	}
+
+	payoutsArray := []UserPayout{}
 
 	for _, pod := range pods {
 
@@ -550,6 +561,23 @@ func DoChargeTransfersAndRefundsCron() {
 					continue
 				}
 
+				payoutIndex := getPayoutIndex(payoutsArray, collaborator.UserID)
+				// if there is no index found, make one
+				if payoutIndex < 0 {
+					newUserPayout := UserPayout{
+						UserID:           collaborator.UserID,
+						Amount:           collaboratorTransferAmount,
+						Email:            collaborator.User.Username,
+						Fees:             0,
+						TransactionCount: 1,
+					}
+					payoutsArray = append(payoutsArray, newUserPayout)
+				} else {
+					// otherwise add to existing
+					payoutsArray[payoutIndex].Amount = payoutsArray[payoutIndex].Amount + collaboratorTransferAmount
+					payoutsArray[payoutIndex].TransactionCount = payoutsArray[payoutIndex].TransactionCount + 1
+				}
+
 				log.Println("transferred")
 				log.Println(collaboratorTransferAmount)
 				log.Println("to")
@@ -588,6 +616,24 @@ func DoChargeTransfersAndRefundsCron() {
 			}
 		}
 	}
+
+	// do payout emails
+	for _, payout := range payoutsArray {
+		SendPayoutEmail(payout)
+	}
+}
+
+func getPayoutIndex(payouts []UserPayout, userID uint) int {
+	index := -1
+
+	for i, p := range payouts {
+		if p.UserID == userID {
+			index = i
+			break
+		}
+
+	}
+	return index
 }
 
 func refundsAreRisky(refundGroup []*stripe.Charge, allCharges []*stripe.Charge) bool {
@@ -774,10 +820,12 @@ func ScheduleRefund(c echo.Context) error {
 		return AbstractError(c, "Something went wrong")
 	}
 
-	err = doChargePermissions(ch, c)
-	if err != nil {
-		return err
+	errMessage := doChargePermissions(ch, c)
+	if errMessage != "" {
+		return AbstractError(c, errMessage)
 	}
+
+	log.Println("NO PERMISSIONS ERROR!")
 
 	params := &stripe.ChargeParams{}
 
@@ -799,10 +847,12 @@ func ScheduleRefund(c echo.Context) error {
 	return c.String(http.StatusOK, "Refund scheduled. Allow time for processing.")
 }
 
-func doChargePermissions(ch *stripe.Charge, c echo.Context) error {
+func doChargePermissions(ch *stripe.Charge, c echo.Context) string {
+	errorMessage := ""
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
-		return AbstractError(c, "Something went wrong")
+		errorMessage = "Something went wrong"
+		// return AbstractError(c, "Something went wrong")
 	}
 
 	chPodSelector := ""
@@ -819,26 +869,28 @@ func doChargePermissions(ch *stripe.Charge, c echo.Context) error {
 	pod := Pod{}
 	result := DB.Where("selector = ?", chPodSelector).First(&pod)
 	if result.Error != nil {
-		return AbstractError(c, "No pod")
+		errorMessage = "No pod"
 	}
 
 	// get collaborator to check permission
 	collaborator := Collaborator{}
 	result = DB.Where("pod_id = ?", pod.ID).Where("user_id = ?", user_id).First(&collaborator)
 	if result.Error != nil {
-		return AbstractError(c, "No collaborator")
+		errorMessage = "No collaborator"
 	}
 
 	if collaborator.RoleTypeID == ROLE_TYPE_LIMITED {
-		return AbstractError(c, "Limited collaborator: action not allowed")
+		// return AbstractError(c, "Limited collaborator: action not allowed")
+		errorMessage = "Limited collaborator: action not allowed"
 	}
 	if collaborator.RoleTypeID == ROLE_TYPE_BASIC {
 		if collaborator.Selector != chCollaboratorSelector {
-			return AbstractError(c, "Basic collaborator: action not allowed")
+			errorMessage = "Basic collaborator: you can't act for other collaborators"
 		}
 	}
 
-	return nil
+	log.Println("REACHED BOTTOM OF doChargePermissions")
+	return errorMessage
 }
 
 func CancelScheduledRefund(c echo.Context) error {
@@ -857,9 +909,9 @@ func CancelScheduledRefund(c echo.Context) error {
 		return AbstractError(c, "Something went wrong")
 	}
 
-	err = doChargePermissions(ch, c)
-	if err != nil {
-		return err
+	errMessage := doChargePermissions(ch, c)
+	if errMessage != "" {
+		return AbstractError(c, errMessage)
 	}
 
 	if ch.Refunded {
