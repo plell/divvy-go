@@ -90,4 +90,6 @@ func MakeRoutes(e *echo.Echo) {
 	super := r.Group("")
 	super.Use(IsSuperAdmin)
 	super.POST("/beta/invite", SendBetaInvite)
+	super.GET("/beta/requestlist", GetBetaRequestList)
+
 }

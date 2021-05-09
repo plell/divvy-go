@@ -266,9 +266,8 @@ type BetaKey struct {
 var BETA_KEY_REQUESTS_TABLE = "beta_key_requests"
 
 type BetaKeyRequest struct {
-	AcceptCode string `json:"acceptCode"`
-	Email      string `json:"email"`
-	Message    string `json:"message"`
+	Email   string `json:"email"`
+	Message string `json:"message"`
 	gorm.Model
 	ByTheBy
 }
