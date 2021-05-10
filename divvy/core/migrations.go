@@ -99,17 +99,19 @@ func CreateSuperUser() {
 	DB.Create(&user)
 
 	avatar := Avatar{
-		UserID:   user.ID,
-		Feature1: 0,
-		Feature2: 0,
-		Feature3: 0,
-		Feature4: 0,
-		Feature5: 0,
-		Feature6: 0,
-		Feature7: 0,
-		Feature8: 0,
-		Feature9: 0,
-		Selector: MakeSelector(AVATAR_TABLE),
+		UserID:    user.ID,
+		Feature1:  0,
+		Feature2:  0,
+		Feature3:  0,
+		Feature4:  0,
+		Feature5:  0,
+		Feature6:  0,
+		Feature7:  0,
+		Feature8:  0,
+		Feature9:  0,
+		Feature10: 0,
+		Feature11: 0,
+		Selector:  MakeSelector(AVATAR_TABLE),
 	}
 
 	DB.Create(&avatar) // pass pointer of data to Create

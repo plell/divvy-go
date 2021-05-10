@@ -506,6 +506,7 @@ func DoChargeTransfersAndRefundsCron() {
 				log.Println("amountAfterFees is 0!!")
 				continue
 			}
+
 			// check that account balance is more than amountAfterFees
 			if amountAfterFees > availableBalance {
 				log.Println("*******************************")
@@ -515,6 +516,9 @@ func DoChargeTransfersAndRefundsCron() {
 				log.Println(amountAfterFees)
 				continue
 			}
+
+			// take charge from balance
+			availableBalance = availableBalance - amountAfterFees
 
 			for c_i, collaborator := range collaborators {
 

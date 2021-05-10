@@ -25,6 +25,8 @@ type UserCreator struct {
 	Feature7    uint   `json:"feature7"`
 	Feature8    uint   `json:"feature8"`
 	Feature9    uint   `json:"feature9"`
+	Feature10   uint   `json:"feature10"`
+	Feature11   uint   `json:"feature11"`
 }
 
 type CreateResponse struct {
@@ -65,17 +67,19 @@ func CreateUser(c echo.Context) error {
 	}
 
 	avatar := Avatar{
-		UserID:   user.ID,
-		Feature1: req.Feature1,
-		Feature2: req.Feature2,
-		Feature3: req.Feature3,
-		Feature4: req.Feature4,
-		Feature5: req.Feature5,
-		Feature6: req.Feature6,
-		Feature7: req.Feature7,
-		Feature8: req.Feature8,
-		Feature9: req.Feature9,
-		Selector: MakeSelector(AVATAR_TABLE),
+		UserID:    user.ID,
+		Feature1:  req.Feature1,
+		Feature2:  req.Feature2,
+		Feature3:  req.Feature3,
+		Feature4:  req.Feature4,
+		Feature5:  req.Feature5,
+		Feature6:  req.Feature6,
+		Feature7:  req.Feature7,
+		Feature8:  req.Feature8,
+		Feature9:  req.Feature9,
+		Feature10: req.Feature10,
+		Feature11: req.Feature11,
+		Selector:  MakeSelector(AVATAR_TABLE),
 	}
 
 	result = DB.Create(&avatar) // pass pointer of data to Create
@@ -216,8 +220,9 @@ func UpdateAvatar(c echo.Context) error {
 	if result.Error != nil {
 		return AbstractError(c, "Something went wrong")
 	}
+
 	// update
-	result = DB.Model(&avatar).Updates(req)
+	result = DB.Model(&avatar).Select("Feature1", "Feature2", "Feature3", "Feature4", "Feature5", "Feature6", "Feature7", "Feature8", "Feature9", "Feature10", "Feature11").Updates(req)
 	if result.Error != nil {
 		return AbstractError(c, "Something went wrong")
 	}
@@ -235,7 +240,9 @@ func UpdateAvatar(c echo.Context) error {
 		avatar.Feature6,
 		avatar.Feature7,
 		avatar.Feature8,
-		avatar.Feature9}
+		avatar.Feature9,
+		avatar.Feature10,
+		avatar.Feature11}
 
 	response := AvatarResponse{
 		Avatar: avatarFeatures}

@@ -15,6 +15,7 @@ func MakeRoutes(e *echo.Echo) {
 	e.Any("/webhook", echo.HandlerFunc(HandleStripeWebhook))
 
 	// token not required group
+	e.GET("/avatarOptions", GetAvatarOptions)
 	e.POST("/login", Login)
 	e.POST("/logout", Logout)
 	// for donation

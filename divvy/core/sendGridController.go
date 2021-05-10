@@ -350,6 +350,11 @@ func SendWalletJoinedEmail(podID uint) {
 		Key:   "walletName",
 		Value: podName,
 	})
+	avatarUrl := "https://avataaars.io/?avatarStyle=Circle" // &topType=ShortHairDreads02&accessoriesType=Prescription01&hairColor=Brown&facialHairType=BeardMajestic&facialHairColor=Platinum&clotheType=Overall&clotheColor=PastelYellow&eyeType=Side&eyebrowType=DefaultNatural&mouthType=Default&skinColor=DarkBrown
+	dd = append(dd, DynamicData{
+		Key:   "avatarUrl",
+		Value: avatarUrl,
+	})
 	emails := []string{}
 	// email all collaborators
 	for _, clbrtr := range collaborators {

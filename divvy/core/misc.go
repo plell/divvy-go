@@ -96,7 +96,9 @@ func AvatarToArray(avatar Avatar) []uint {
 		avatar.Feature6,
 		avatar.Feature7,
 		avatar.Feature8,
-		avatar.Feature9}
+		avatar.Feature9,
+		avatar.Feature10,
+		avatar.Feature11}
 
 	return avatarFeatures
 }
@@ -116,15 +118,22 @@ func BuildUser(user User) UserAPI {
 // build user from collaborator
 func BuildUserFromCollaborator(collaborator Collaborator) CollaboratorAPI {
 	u := collaborator.User
+	//fixme, check
+	hasStripeAccount := true
+	if u.StripeAccount.AcctID == "" {
+		hasStripeAccount = false
+	}
+
 	return CollaboratorAPI{
-		DisplayName:  u.DisplayName,
-		Username:     u.Username,
-		Selector:     collaborator.Selector,
-		UserSelector: u.Selector,
-		City:         u.City,
-		IsAdmin:      collaborator.RoleTypeID == ROLE_TYPE_ADMIN,
-		Avatar:       AvatarToArray(u.Avatar),
-		RoleTypeID:   collaborator.RoleTypeID,
+		DisplayName:      u.DisplayName,
+		Username:         u.Username,
+		Selector:         collaborator.Selector,
+		UserSelector:     u.Selector,
+		City:             u.City,
+		HasStripeAccount: hasStripeAccount,
+		IsAdmin:          collaborator.RoleTypeID == ROLE_TYPE_ADMIN,
+		Avatar:           AvatarToArray(u.Avatar),
+		RoleTypeID:       collaborator.RoleTypeID,
 	}
 }
 
@@ -151,4 +160,179 @@ func FormatAmountToString(amount int64) string {
 	a := ac.FormatMoney(af)
 
 	return a
+}
+
+type AvatarOptions struct {
+	TopType         []string `json:"topType"`
+	AccessoriesType []string `json:"accessoryType"`
+	HairColor       []string `json:"hairColor"`
+	FacialHairType  []string `json:"facialHairType"`
+	ClotheType      []string `json:"clotheType"`
+	EyeType         []string `json:"eyeType"`
+	EyebrowType     []string `json:"eyebrowType"`
+	MouthType       []string `json:"mouthType"`
+	SkinColor       []string `json:"skinColor"`
+	FacialHairColor []string `json:"facialHairColor"`
+	ClotheColor     []string `json:"clotheColor"`
+}
+
+func GetAvatarOptions(c echo.Context) error {
+	avatarOptions := AvatarOptions{}
+	avatarOptions.TopType = []string{
+		"NoHair",
+		"Eyepatch",
+		"Hat",
+		"Hijab",
+		"Turban",
+		"WinterHat1",
+		"WinterHat2",
+		"WinterHat3",
+		"WinterHat4",
+		"LongHairBigHair",
+		"LongHairBob",
+		"LongHairBun",
+		"LongHairCurly",
+		"LongHairCurvy",
+		"LongHairDreads",
+		"LongHairFrida",
+		"LongHairFro",
+		"LongHairFroBand",
+		"LongHairNotTooLong",
+		"LongHairShavedSides",
+		"LongHairMiaWallace",
+		"LongHairStraight",
+		"LongHairStraight2",
+		"LongHairStraightStrand",
+		"ShortHairDreads01",
+		"ShortHairDreads02",
+		"ShortHairFrizzle",
+		"ShortHairShaggyMullet",
+		"ShortHairShortCurly",
+		"ShortHairShortFlat",
+		"ShortHairShortRound",
+		"ShortHairShortWaved",
+		"ShortHairSides",
+		"ShortHairTheCaesar",
+		"ShortHairTheCaesarSidePart",
+	}
+	avatarOptions.AccessoriesType = []string{
+		"Blank",
+		"Kurt",
+		"Prescription01",
+		"Prescription02",
+		"Round",
+		"Sunglasses",
+		"Wayfarers",
+	}
+	avatarOptions.HairColor = []string{
+		"Auburn",
+		"Black",
+		"Blonde",
+		"BlondeGolden",
+		"Brown",
+		"BrownDark",
+		"PastelPink",
+		"Platinum",
+		"Red",
+		"SilverGray",
+	}
+	avatarOptions.FacialHairType = []string{
+		"Blank",
+		"BeardMedium",
+		"BeardLight",
+		"BeardMagestic",
+		"MoustacheFancy",
+		"MoustacheMagnum",
+	}
+	avatarOptions.ClotheType = []string{
+		"BlazerShirt",
+		"BlazerSweater",
+		"CollarSweater",
+		"GraphicShirt",
+		"Hoodie",
+		"Overall",
+		"ShirtCrewNeck",
+		"ShirtScoopNeck",
+		"ShirtVNeck",
+	}
+	avatarOptions.EyeType = []string{
+		"Close",
+		"Default",
+		"Dizzy",
+		"EyeRoll",
+		"Happy",
+		"Hearts",
+		"Side",
+		"Squint",
+		"Surprised",
+		"Wink",
+		"WinkWacky",
+	}
+	avatarOptions.EyebrowType = []string{
+		"Angry",
+		"AngryNatural",
+		"Default",
+		"DefaultNatural",
+		"FlatNatural",
+		"RaisedExcited",
+		"RaisedExcitedNatural",
+		"SadConcerned",
+		"SadConcernedNatural",
+		"UnibrowNatural",
+		"UpDown",
+		"UpDownNatural",
+	}
+	avatarOptions.MouthType = []string{
+		"Concerned",
+		"Default",
+		"Disbelief",
+		"Eating",
+		"Grimace",
+		"Sad",
+		"ScreamOpen",
+		"Serious",
+		"Smile",
+		"Tongue",
+		"Twinkle",
+	}
+	avatarOptions.SkinColor = []string{
+		"Brown",
+		"Tanned",
+		"Yellow",
+		"Black",
+		"Pale",
+		"Light",
+		"DarkBrown",
+	}
+
+	avatarOptions.ClotheColor = []string{
+		"Black",
+		"Blue01",
+		"Blue02",
+		"Blue03",
+		"Gray01",
+		"Gray02",
+		"Heather",
+		"PastelBlue",
+		"PastelGreen",
+		"PastelRed",
+		"PastelYellow",
+		"PastelOrange",
+		"Pink",
+		"White",
+		"Red",
+	}
+
+	avatarOptions.FacialHairColor = []string{
+		"Auburn",
+		"Black",
+		"Blonde",
+		"BlondeGolden",
+		"Brown",
+		"BrownDark",
+		"Platinum",
+		"Red",
+	}
+
+	return c.JSON(http.StatusOK, avatarOptions)
 }

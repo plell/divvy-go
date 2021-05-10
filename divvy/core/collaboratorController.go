@@ -134,7 +134,7 @@ func GetCollaboratorList(c echo.Context) error {
 
 	// get collaborators
 	collaborators := []Collaborator{}
-	result = DB.Preload("User").Preload("User.Avatar").Where("pod_id = ?", pod.ID).Find(&collaborators)
+	result = DB.Preload("User").Preload("User.Avatar").Preload("User.StripeAccount").Where("pod_id = ?", pod.ID).Find(&collaborators)
 
 	if result.Error != nil {
 		return AbstractError(c, "Something went wrong")

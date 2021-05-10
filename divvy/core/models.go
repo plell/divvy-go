@@ -71,32 +71,36 @@ type StripeAccountAPI struct {
 var AVATAR_TABLE = "avatars"
 
 type Avatar struct {
-	UserID   uint   `json:"userId"`
-	Feature1 uint   `json:"feature1"`
-	Feature2 uint   `json:"feature2"`
-	Feature3 uint   `json:"feature3"`
-	Feature4 uint   `json:"feature4"`
-	Feature5 uint   `json:"feature5"`
-	Feature6 uint   `json:"feature6"`
-	Feature7 uint   `json:"feature7"`
-	Feature8 uint   `json:"feature8"`
-	Feature9 uint   `json:"feature9"`
-	Selector string `json:"selector"`
+	UserID    uint   `json:"userId"`
+	Feature1  uint   `gorm:"default:0" json:"feature1"`
+	Feature2  uint   `gorm:"default:0" json:"feature2"`
+	Feature3  uint   `gorm:"default:0" json:"feature3"`
+	Feature4  uint   `gorm:"default:0" json:"feature4"`
+	Feature5  uint   `gorm:"default:0" json:"feature5"`
+	Feature6  uint   `gorm:"default:0" json:"feature6"`
+	Feature7  uint   `gorm:"default:0" json:"feature7"`
+	Feature8  uint   `gorm:"default:0" json:"feature8"`
+	Feature9  uint   `gorm:"default:0" json:"feature9"`
+	Feature10 uint   `gorm:"default:0" json:"feature10"`
+	Feature11 uint   `gorm:"default:0" json:"feature11"`
+	Selector  string `json:"selector"`
 	gorm.Model
 	ByTheBy
 }
 type AvatarAPI struct {
-	Feature1 uint   `json:"feature1"`
-	Feature2 uint   `json:"feature2"`
-	Feature3 uint   `json:"feature3"`
-	Feature4 uint   `json:"feature4"`
-	Feature5 uint   `json:"feature5"`
-	Feature6 uint   `json:"feature6"`
-	Feature7 uint   `json:"feature7"`
-	Feature8 uint   `json:"feature8"`
-	Feature9 uint   `json:"feature9"`
-	Selector string `json:"selector"`
-	UserID   uint   `json:"userId"`
+	Feature1  uint   `json:"feature1"`
+	Feature2  uint   `json:"feature2"`
+	Feature3  uint   `json:"feature3"`
+	Feature4  uint   `json:"feature4"`
+	Feature5  uint   `json:"feature5"`
+	Feature6  uint   `json:"feature6"`
+	Feature7  uint   `json:"feature7"`
+	Feature8  uint   `json:"feature8"`
+	Feature9  uint   `json:"feature9"`
+	Feature10 uint   `json:"feature10"`
+	Feature11 uint   `json:"feature11"`
+	Selector  string `json:"selector"`
+	UserID    uint   `json:"userId"`
 }
 
 var COLLABORATOR_TABLE = "collaborators"
@@ -113,16 +117,17 @@ type Collaborator struct {
 	ByTheBy
 }
 type CollaboratorAPI struct {
-	IsAdmin      bool    `json:"isAdmin"`
-	Selector     string  `json:"selector"`
-	UserSelector string  `json:"userSelector"`
-	DisplayName  string  `json:"displayName"`
-	Username     string  `json:"username"`
-	Distribution float64 `json:"distribution"`
-	City         string  `json:"city"`
-	Avatar       []uint  `json:"avatar"`
-	RoleType     RoleType
-	RoleTypeID   uint `json:"roleTypeId"`
+	IsAdmin          bool    `json:"isAdmin"`
+	Selector         string  `json:"selector"`
+	UserSelector     string  `json:"userSelector"`
+	DisplayName      string  `json:"displayName"`
+	Username         string  `json:"username"`
+	Distribution     float64 `json:"distribution"`
+	HasStripeAccount bool    `json:"hasStripeAccount"`
+	City             string  `json:"city"`
+	Avatar           []uint  `json:"avatar"`
+	RoleType         RoleType
+	RoleTypeID       uint `json:"roleTypeId"`
 }
 
 var POD_TABLE = "pods"
