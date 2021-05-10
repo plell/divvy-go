@@ -719,6 +719,7 @@ type ChargeListItem struct {
 	Metadata          map[string]string `json:"metadata"`
 	Created           int64             `json:"created"`
 	Paid              bool              `json:"paid"`
+	HasMore           bool              `json:"hasMore"`
 }
 
 type PaymentMethodCard struct {
@@ -726,26 +727,54 @@ type PaymentMethodCard struct {
 	Last4   string                          `json:"last4"`
 }
 
+type ListNav struct {
+	StartingAfterID string `json:"startingAfterId"`
+	EndingBeforeID  string `json:"endingBeforeId"`
+}
+
 func GetPodChargeList(c echo.Context) error {
+
+	// "navigateUp": chargeID
+	// "navigateDown": chargeID
 
 	// get from params
 	podSelector := c.Param("podSelector")
 
+	listNav := ListNav{}
+	defer c.Request().Body.Close()
+	err := json.NewDecoder(c.Request().Body).Decode(&listNav)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "no good")
+	}
+
 	stripe.Key = getStripeKey()
 
+	// chargeListLimit := int64(1)
 	params := &stripe.ChargeListParams{
 		TransferGroup: stripe.String(podSelector),
-		CreatedRange: &stripe.RangeQueryParams{
-			GreaterThan: time.Now().AddDate(0, 0, -30).Unix(), // last 30 days
-		},
 	}
 
 	params.ListParams.Single = true
-	params.Filters.AddFilter("limit", "", "20")
+	params.Filters.AddFilter("limit", "", "8")
+
+	if listNav.StartingAfterID != "" {
+		// get next page
+		params.Filters.AddFilter("starting_after", "", listNav.StartingAfterID)
+	} else if listNav.EndingBeforeID != "" {
+		// get previous page
+		params.Filters.AddFilter("ending_before", "", listNav.EndingBeforeID)
+	}
 
 	charges := []ChargeListItem{}
 	i := charge.List(params)
+
+	log.Println("raw return")
+	log.Println(i)
+
 	for i.Next() {
+
+		hasMore := i.Iter.Meta().HasMore
+
 		c := i.Charge()
 		o := ChargeListItem{
 			ID: c.ID,
@@ -758,6 +787,7 @@ func GetPodChargeList(c echo.Context) error {
 			Metadata: c.Metadata,
 			Created:  c.Created,
 			Paid:     c.Paid,
+			HasMore:  hasMore,
 		}
 		charges = append(charges, o)
 	}
