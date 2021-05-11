@@ -65,6 +65,7 @@ func MakeRoutes(e *echo.Echo) {
 	s.Use(IsPodMember)
 	s.GET("/pod/:podSelector", GetPod)
 	s.GET("/pod/invitelist/:podSelector", GetInvites)
+	s.GET("/pod/unavailableCharges/:podSelector", GetPodUnavailableChargeList)
 	s.POST("/pod/transfers/:podSelector", GetPodTransfers)
 	s.DELETE("/pod/leave/:podSelector/:selector", LeavePod)
 	s.GET("/stripe/transferlist/:podSelector", GetPodTransferList)

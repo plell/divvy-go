@@ -38,6 +38,8 @@ type User struct {
 	StripeAccount         StripeAccount //`gorm:"PRELOAD:false"`
 	Collaborator          []Collaborator
 	EmailVerificationCode EmailVerificationCode
+	Locked                bool   `json:"locked"`
+	LockedReason          string `json:"lockedReason"`
 	ByTheBy
 	gorm.Model
 }
@@ -71,7 +73,7 @@ type StripeAccountAPI struct {
 var USER_TRANSFER_TABLE = "user_transfers"
 
 type UserTransfer struct {
-	ChargeID             string `json:"chargeID"`
+	ChargeID             string `json:"chargeId"`
 	TransferID           string `json:"transferId"`
 	JamFees              int64  `json:"jamFees"`
 	StripeFees           int64  `json:"stripeFees"`
@@ -281,6 +283,7 @@ var BETA_KEY_TABLE = "beta_keys"
 
 type BetaKey struct {
 	BetaKey string `json:"betaKey"`
+	Public  bool   `json:"public"`
 	gorm.Model
 	ByTheBy
 }

@@ -806,13 +806,12 @@ func GetPodChargeList(c echo.Context) error {
 
 	stripe.Key = getStripeKey()
 
-	// chargeListLimit := int64(1)
 	params := &stripe.ChargeListParams{
 		TransferGroup: stripe.String(podSelector),
 	}
 
 	params.ListParams.Single = true
-	params.Filters.AddFilter("limit", "", "10")
+	params.Filters.AddFilter("limit", "", "5")
 
 	if listNav.StartingAfterID != "" {
 		// get next page
@@ -824,9 +823,6 @@ func GetPodChargeList(c echo.Context) error {
 
 	charges := []ChargeListItem{}
 	i := charge.List(params)
-
-	log.Println("raw return")
-	log.Println(i)
 
 	for i.Next() {
 
@@ -846,6 +842,55 @@ func GetPodChargeList(c echo.Context) error {
 			Paid:     c.Paid,
 			HasMore:  hasMore,
 		}
+		charges = append(charges, o)
+	}
+
+	return c.JSON(http.StatusOK, charges)
+}
+
+func GetPodUnavailableChargeList(c echo.Context) error {
+	// get from params
+	podSelector := c.Param("podSelector")
+
+	stripe.Key = getStripeKey()
+
+	// 10 days
+	createdSinceDaysGo := time.Now().AddDate(-10, 0, 0).Unix()
+
+	params := &stripe.ChargeListParams{
+		TransferGroup: stripe.String(podSelector),
+		CreatedRange: &stripe.RangeQueryParams{
+			GreaterThan: createdSinceDaysGo,
+		},
+	}
+
+	charges := []ChargeListItem{}
+	i := charge.List(params)
+
+	for i.Next() {
+		c := i.Charge()
+		log.Println(c.Refunded)
+		if c.Refunded {
+			continue
+		}
+
+		if _, ok := c.Metadata["transfers_complete"]; ok {
+			//this charge was transfered! skip it
+			continue
+		}
+		o := ChargeListItem{
+			ID: c.ID,
+			PaymentMethodCard: PaymentMethodCard{
+				Last4:   c.PaymentMethodDetails.Card.Last4,
+				Network: c.PaymentMethodDetails.Card.Network,
+			},
+			Amount:   c.Amount,
+			Refunded: c.Refunded,
+			Metadata: c.Metadata,
+			Created:  c.Created,
+			Paid:     c.Paid,
+		}
+
 		charges = append(charges, o)
 	}
 
