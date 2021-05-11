@@ -812,7 +812,7 @@ func GetPodChargeList(c echo.Context) error {
 	}
 
 	params.ListParams.Single = true
-	params.Filters.AddFilter("limit", "", "8")
+	params.Filters.AddFilter("limit", "", "10")
 
 	if listNav.StartingAfterID != "" {
 		// get next page

@@ -343,7 +343,7 @@ func GetJoinPod(c echo.Context) error {
 }
 
 type PodTransferRequest struct {
-	Month string `json:"month"`
+	SubMonths int `json:"subMonths"`
 }
 
 func GetPodTransfers(c echo.Context) error {
@@ -357,7 +357,10 @@ func GetPodTransfers(c echo.Context) error {
 
 	podTransfers := []UserTransfer{}
 
-	t := time.Now()
+	// SubMonths here to get requested month
+	negativeMonths := req.SubMonths * -1
+	t := time.Now().AddDate(0, negativeMonths, 0)
+
 	firstday := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.Local)
 	lastday := firstday.AddDate(0, 1, 0).Add(time.Nanosecond * -1)
 

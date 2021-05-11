@@ -133,6 +133,32 @@ func VerifyAccountEmail(c echo.Context) error {
 	return c.String(http.StatusOK, user.Verified)
 }
 
+func GetUserTransfers(c echo.Context) error {
+	userSelector := c.Param("userSelector")
+	req := PodTransferRequest{}
+	defer c.Request().Body.Close()
+	err := json.NewDecoder(c.Request().Body).Decode(&req)
+	if err != nil {
+		return AbstractError(c, "Couldn't read request")
+	}
+
+	userTransfers := []UserTransfer{}
+
+	// SubMonths here to get requested month
+	negativeMonths := req.SubMonths * -1
+	t := time.Now().AddDate(0, negativeMonths, 0)
+
+	firstday := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.Local)
+	lastday := firstday.AddDate(0, 1, 0).Add(time.Nanosecond * -1)
+
+	result := DB.Where("user_selector = ?", userSelector).Where("created_at BETWEEN ? AND ?", firstday, lastday).Find(&userTransfers)
+	if result.Error != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	return c.JSON(http.StatusOK, userTransfers)
+}
+
 func GetUser(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
