@@ -52,7 +52,7 @@ type UserAPI struct {
 	Avatar      []uint `json:"avatar"`
 }
 
-var STRIPE_ACCOUT_TABLE = "stripe_accounts"
+var STRIPE_ACCOUNT_TABLE = "stripe_accounts"
 
 type StripeAccount struct {
 	UserID   uint   `json:"userId"`
@@ -66,6 +66,23 @@ type StripeAccountAPI struct {
 	AcctID   string `json:"acctId"`
 	Selector string `json:"selector"`
 	Verified string `json:"verified"`
+}
+
+var USER_TRANSFER_TABLE = "user_transfers"
+
+type UserTransfer struct {
+	ChargeID             string `json:"chargeID"`
+	TransferID           string `json:"transferId"`
+	JamFees              int64  `json:"jamFees"`
+	StripeFees           int64  `json:"stripeFees"`
+	Amount               int64  `json:"amount"`
+	AmountAfterFees      int64  `json:"amountAfterFees"`
+	TransferAmount       int64  `json:"transferAmount"`
+	UserSelector         string `json:"userSelector"`
+	CollaboratorSelector string `json:"collaboratorSelector"`
+	PodSelector          string `json:"podSelector"`
+	gorm.Model
+	ByTheBy
 }
 
 var AVATAR_TABLE = "avatars"

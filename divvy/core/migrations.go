@@ -23,6 +23,7 @@ func MigrateUp() {
 		&LoginHistory{},
 		&BetaKey{},
 		&EmailVerificationCode{},
+		&UserTransfer{},
 	)
 
 	insertStaticRecords()

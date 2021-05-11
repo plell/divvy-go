@@ -70,13 +70,13 @@ func GetStripeAccount(c echo.Context) error {
 	return c.JSON(http.StatusOK, acct)
 }
 
-func getTotalAmountAfterFees(amount int64) int64 {
+func getTotalAmountAfterFees(amount int64) (int64, int64, int64) {
 	stripeFees := calcStripeFees(amount)
 	jamFees := calcJamFees(amount)
 
-	amountMinusFees := amount - stripeFees - jamFees
+	amountAfterFees := amount - stripeFees - jamFees
 
-	return amountMinusFees
+	return amountAfterFees, stripeFees, jamFees
 }
 
 func calcStripeFees(fullamount int64) int64 {
@@ -151,7 +151,7 @@ func LinkStripeAccount(c echo.Context) error {
 		stripeAccount := StripeAccount{
 			AcctID:   acct.ID,
 			UserID:   user_id,
-			Selector: MakeSelector(STRIPE_ACCOUT_TABLE),
+			Selector: MakeSelector(STRIPE_ACCOUNT_TABLE),
 		}
 
 		result := DB.Create(&stripeAccount) // pass pointer of data to Create
@@ -264,7 +264,11 @@ func CreateCheckoutSession(c echo.Context) error {
 	metaDataPack["userSelector"] = user.Selector
 	metaDataPack["podSelector"] = pod.Selector
 	metaDataPack["collaboratorSelector"] = collaborator.Selector
-	amountAfterFees := getTotalAmountAfterFees(request.Amount)
+
+	amountAfterFees, stripeFees, jamFees := getTotalAmountAfterFees(request.Amount)
+
+	metaDataPack["stripeFees"] = strconv.Itoa(int(stripeFees))
+	metaDataPack["jamFees"] = strconv.Itoa(int(jamFees))
 	metaDataPack["amountAfterFees"] = strconv.Itoa(int(amountAfterFees))
 
 	stripe.Key = getStripeKey()
@@ -492,9 +496,26 @@ func DoChargeTransfersAndRefundsCron() {
 
 			chargeParams := &stripe.ChargeParams{}
 			amountAfterFees := int64(0)
+			stripeFees := int64(0)
+			jamFees := int64(0)
 
-			if c.Metadata["amountAfterFees"] != "" {
-				// if in metadata, take it from there, stay consistant
+			if _, ok := c.Metadata["jamFees"]; ok {
+				aaf, err := strconv.Atoi(c.Metadata["jamFees"])
+				if err == nil {
+					log.Println("got amount after fees from metadata!")
+					jamFees = int64(aaf)
+				}
+			}
+
+			if _, ok := c.Metadata["stripeFees"]; ok {
+				aaf, err := strconv.Atoi(c.Metadata["stripeFees"])
+				if err == nil {
+					log.Println("got amount after fees from metadata!")
+					stripeFees = int64(aaf)
+				}
+			}
+
+			if _, ok := c.Metadata["amountAfterFees"]; ok {
 				aaf, err := strconv.Atoi(c.Metadata["amountAfterFees"])
 				if err == nil {
 					log.Println("got amount after fees from metadata!")
@@ -523,15 +544,20 @@ func DoChargeTransfersAndRefundsCron() {
 			for c_i, collaborator := range collaborators {
 
 				// look at pod payout setting and split up payment!
+
 				collaboratorTransferAmount := int64(0)
+				// collaboratorBeforeFeeAmountReference := int64(0)
+
 				if pod.PayoutTypeId == POD_PAYOUT_EVEN_SPLIT {
 					//even split
 					log.Println("POD PAYOUT IS EVEN SPLIT")
 					collaboratorTransferAmount = getCollaboratorTransferAmount(amountAfterFees, collaboratorLength)
+					// collaboratorBeforeFeeAmountReference = getCollaboratorTransferAmount(c.Amount, collaboratorLength)
 				} else {
 					// tilted split
 					log.Println("POD PAYOUT IS NOT EVEN SPLIT")
 					collaboratorTransferAmount = getCollaboratorTransferAmountTilted(collaborator, amountAfterFees, adminCount, nonadminCount, pod.PayoutTypeId)
+					// collaboratorBeforeFeeAmountReference = getCollaboratorTransferAmountTilted(collaborator, c.Amount, adminCount, nonadminCount, pod.PayoutTypeId)
 				}
 
 				userSelector := collaborator.User.Selector
@@ -563,6 +589,25 @@ func DoChargeTransfersAndRefundsCron() {
 					log.Println("TRANSFER ERROR!")
 					log.Println(err.Error())
 					continue
+				}
+
+				userTransfer := UserTransfer{
+					TransferID:           tr.ID,
+					ChargeID:             c.ID,
+					JamFees:              jamFees,
+					StripeFees:           stripeFees,
+					Amount:               c.Amount,
+					AmountAfterFees:      amountAfterFees,
+					TransferAmount:       collaboratorTransferAmount,
+					UserSelector:         userSelector,
+					CollaboratorSelector: collaboratorSelector,
+					PodSelector:          pod.Selector,
+				}
+				result = DB.Create(&userTransfer)
+
+				if result.Error != nil {
+					log.Println("couldn't make db record!")
+					log.Println(tr.ID)
 				}
 
 				payoutIndex := getPayoutIndex(payoutsArray, collaborator.UserID)
@@ -681,10 +726,22 @@ func CreateRefund(txnId string, collaborators []Collaborator) {
 				Amount:   stripe.Int64(t.Amount),
 				Transfer: stripe.String(transferId),
 			}
+
 			rev, err := reversal.New(reversalParams)
 			if err != nil {
 				log.Println("reversal failed")
 			} else {
+				// delete transfer record
+				userTransfer := UserTransfer{}
+				result := DB.Where("transfer_id = ?", transferId).First(&userTransfer)
+				if result.Error != nil {
+					log.Println("could not find userTransfer of transfer id " + transferId)
+				}
+				result = DB.Delete(&userTransfer)
+				if result.Error != nil {
+					log.Println("could not delete userTransfer of transfer id " + transferId)
+				}
+
 				log.Println("reversal succeeded")
 				log.Println(rev.ID)
 				log.Println(t.Amount)
