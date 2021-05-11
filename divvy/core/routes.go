@@ -64,11 +64,12 @@ func MakeRoutes(e *echo.Echo) {
 	s.Use(IsPodMember)
 	s.GET("/pod/:podSelector", GetPod)
 	s.GET("/pod/invitelist/:podSelector", GetInvites)
+	s.POST("/pod/transfers/:podSelector", GetPodTransfers)
+	s.DELETE("/pod/leave/:podSelector/:selector", LeavePod)
 	s.GET("/stripe/transferlist/:podSelector", GetPodTransferList)
 	s.GET("/stripe/payoutlist/:podSelector", GetPodPayoutList)
 	s.POST("/stripe/chargelist/:podSelector", GetPodChargeList)
 	s.GET("/collaboratorlist/:podSelector", GetCollaboratorList)
-	s.DELETE("/pod/leave/:podSelector/:selector", LeavePod)
 
 	// v: require token, pod collaborator, and admin
 	v := s.Group("")

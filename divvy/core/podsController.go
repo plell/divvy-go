@@ -342,6 +342,33 @@ func GetJoinPod(c echo.Context) error {
 	return c.JSON(http.StatusOK, podRes)
 }
 
+type PodTransferRequest struct {
+	Month string `json:"month"`
+}
+
+func GetPodTransfers(c echo.Context) error {
+	podSelector := c.Param("podSelector")
+	req := PodTransferRequest{}
+	defer c.Request().Body.Close()
+	err := json.NewDecoder(c.Request().Body).Decode(&req)
+	if err != nil {
+		return AbstractError(c, "Couldn't read request")
+	}
+
+	podTransfers := []UserTransfer{}
+
+	t := time.Now()
+	firstday := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.Local)
+	lastday := firstday.AddDate(0, 1, 0).Add(time.Nanosecond * -1)
+
+	result := DB.Where("pod_selector = ?", podSelector).Where("created_at BETWEEN ? AND ?", firstday, lastday).Find(&podTransfers)
+	if result.Error != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	return c.JSON(http.StatusOK, podTransfers)
+}
+
 func GetInvites(c echo.Context) error {
 	// user_id, err := GetUserIdFromToken(c)
 	// if err != nil {
