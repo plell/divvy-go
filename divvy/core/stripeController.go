@@ -754,12 +754,10 @@ func CreateRefund(txnId string, collaborators []Collaborator) {
 		Charge: stripe.String(txnId),
 	}
 
-	r, err := refund.New(params)
+	_, err := refund.New(params)
 	if err != nil {
 		return
 	}
-	log.Println("refund succeeded")
-	log.Println(r)
 
 }
 
@@ -869,7 +867,6 @@ func GetPodUnavailableChargeList(c echo.Context) error {
 
 	for i.Next() {
 		c := i.Charge()
-		log.Println(c.Refunded)
 		if c.Refunded {
 			continue
 		}
@@ -961,8 +958,6 @@ func ScheduleRefund(c echo.Context) error {
 		return AbstractError(c, errMessage)
 	}
 
-	log.Println("NO PERMISSIONS ERROR!")
-
 	params := &stripe.ChargeParams{}
 
 	t := time.Now().String()
@@ -1025,7 +1020,6 @@ func doChargePermissions(ch *stripe.Charge, c echo.Context) string {
 		}
 	}
 
-	log.Println("REACHED BOTTOM OF doChargePermissions")
 	return errorMessage
 }
 
@@ -1163,13 +1157,10 @@ func handleCompletedCheckoutSession(session stripe.CheckoutSession) {
 	// Fulfill the purchase.
 	// here is where the transaction record is updated, with a completed status
 	log.Println("handleCompletedCheckoutSession")
-	log.Println(session.ID)
 
 	// here is where the transaction record is updated, with a completed status
 	userSelector := ""
 	if _, ok := session.Metadata["userSelector"]; ok {
-		log.Println("got meta!")
-		log.Println(session.Metadata["userSelector"])
 		userSelector = session.Metadata["userSelector"]
 	} else {
 		log.Println("no meta!")
@@ -1186,12 +1177,10 @@ func handleCompletedCheckoutSession(session stripe.CheckoutSession) {
 func handleSuccessfulPaymentIntent(intent stripe.PaymentIntent) {
 	// here is where the transaction record is updated, with a completed status
 	log.Println("handleSuccessfulPaymentIntent")
-	log.Println(intent.Amount)
 	amount := intent.Amount
+
 	userSelector := ""
 	if _, ok := intent.Metadata["userSelector"]; ok {
-		log.Println("got meta!")
-		log.Println(intent.Metadata["userSelector"])
 		userSelector = intent.Metadata["userSelector"]
 	} else {
 		log.Println("no meta!")
@@ -1207,13 +1196,10 @@ func handleSuccessfulPaymentIntent(intent stripe.PaymentIntent) {
 
 func handleSuccessfulCharge(ch stripe.Charge) {
 	// here is where the transaction record is updated, with a completed status
-	log.Println("handleSuccessfulPaymentIntent")
-	log.Println(ch.Amount)
+	log.Println("handleSuccessfulCharge")
 	amount := ch.Amount
 	userSelector := ""
 	if _, ok := ch.Metadata["userSelector"]; ok {
-		log.Println("got meta!")
-		log.Println(ch.Metadata["userSelector"])
 		userSelector = ch.Metadata["userSelector"]
 	} else {
 		log.Println("no meta!")
@@ -1230,8 +1216,6 @@ func handleSuccessfulCharge(ch stripe.Charge) {
 
 func handleBalanceAvailable(b stripe.Balance) {
 	log.Println("handleBalanceAvailable")
-	log.Println(b)
-	log.Println(b.Available)
 
 	// if we can transfer at this stage, transfer!
 }

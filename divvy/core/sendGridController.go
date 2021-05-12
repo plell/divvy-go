@@ -34,6 +34,8 @@ var SENDGRID_WALLET_DESTROYED_TEMPLATE = "d-a72b5e54002a4b50a055f68862bea2f8"
 var SENDGRID_PAYOUT_TEMPLATE = "d-a513fb876a094b90920e5159d08734fb"
 var SENDGRID_PAYMENT_RECEIVED_TEMPLATE = "d-5a26312bde7d41f8a292a654f9a60e8e"
 
+var SENDGRID_PAYMENT_RECEIPT_TEMPLATE = "d-722ac28ca10b4ab7978698f7fcc4b1cc"
+
 type InviteCreator struct {
 	Email       string `json:"email"`
 	PodSelector string `json:"podSelector"`
@@ -278,13 +280,8 @@ func SendPaymentReceivedEmail(c stripe.Charge) {
 	log.Println("SendPaymentReceivedEmail")
 
 	podSelector := ""
-	amountAfterFees := 0
 	if _, ok := c.Metadata["podSelector"]; ok {
 		podSelector = c.Metadata["podSelector"]
-	}
-
-	if _, ok := c.Metadata["amountAfterFees"]; ok {
-		amountAfterFees, _ = strconv.Atoi(c.Metadata["amountAfterFees"])
 	}
 
 	collaborators, podName, err := getCollaboratorsFromPodSelector(podSelector)
@@ -292,14 +289,20 @@ func SendPaymentReceivedEmail(c stripe.Charge) {
 		return
 	}
 
+	customerEmail := c.BillingDetails.Email
+	customerName := c.BillingDetails.Name
 	dd := []DynamicData{}
 	dd = append(dd, DynamicData{
 		Key:   "amount",
 		Value: FormatAmountToString(c.Amount),
 	})
 	dd = append(dd, DynamicData{
-		Key:   "amountAfterFees",
-		Value: FormatAmountToString(int64(amountAfterFees)),
+		Key:   "customerEmail",
+		Value: customerEmail,
+	})
+	dd = append(dd, DynamicData{
+		Key:   "customerName",
+		Value: customerName,
 	})
 	dd = append(dd, DynamicData{
 		Key:   "podName",
@@ -314,6 +317,27 @@ func SendPaymentReceivedEmail(c stripe.Charge) {
 	}
 
 	SendEmail("payment", SENDGRID_PAYMENT_RECEIVED_TEMPLATE, emails, dd)
+
+	SendPaymentReceiptEmail(c, podName)
+}
+
+func SendPaymentReceiptEmail(c stripe.Charge, podName string) {
+	log.Println("SendPaymentReceiptEmail")
+	dd := []DynamicData{}
+	dd = append(dd, DynamicData{
+		Key:   "amount",
+		Value: FormatAmountToString(int64(c.Amount)),
+	})
+	dd = append(dd, DynamicData{
+		Key:   "podName",
+		Value: podName,
+	})
+
+	customerEmail := c.BillingDetails.Email
+	emails := []string{}
+	emails = append(emails, customerEmail)
+
+	SendEmail("receipt", SENDGRID_PAYMENT_RECEIPT_TEMPLATE, emails, dd)
 }
 
 func SendWalletUpdatedEmail(podSelector string) {
