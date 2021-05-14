@@ -247,28 +247,57 @@ func SendRefundCancelledEmail(podSelector string) {
 	SendEmail("refunds", SENDGRID_REFUND_CANCELLED_TEMPLATE, emails, dd)
 }
 
-// Amount           int64  `json:"amount"`
-// TransactionCount int    `json:"transactionCount"`
-// Fees             int64  `json:"fees"`
-// Email            string `json:"email"`
-// UserID           uint   `json:"userId"`
-
 func SendPayoutEmail(payout UserPayout) {
 	log.Println("SendPayoutEmail")
 
 	dd := []DynamicData{}
 	dd = append(dd, DynamicData{
 		Key:   "amount",
-		Value: FormatAmountToString(payout.Amount),
+		Value: FormatAmountToString(payout.Amount, "$"),
 	})
 	dd = append(dd, DynamicData{
-		Key:   "fees",
-		Value: FormatAmountToString(payout.Fees),
+		Key:   "displayName",
+		Value: payout.DisplayName,
 	})
+
 	dd = append(dd, DynamicData{
-		Key:   "transactionCount",
-		Value: strconv.Itoa(payout.TransactionCount),
+		Key:   "JAM_FEE",
+		Value: JAM_PERCENT_FEE_STRING,
 	})
+
+	// pod breakdown
+	for i, pp := range payout.PodPayouts {
+		podNameKey := "podName" + strconv.Itoa(i)
+		dd = append(dd, DynamicData{
+			Key:   podNameKey,
+			Value: pp.PodName,
+		})
+		podAmountKey := "podAmount" + strconv.Itoa(i)
+		dd = append(dd, DynamicData{
+			Key:   podAmountKey,
+			Value: FormatAmountToString(pp.PodAmount, "$"),
+		})
+		podAmountAfterFeesKey := "podAmountAfterFees" + strconv.Itoa(i)
+		dd = append(dd, DynamicData{
+			Key:   podAmountAfterFeesKey,
+			Value: FormatAmountToString(pp.PodAmountAfterFees, "$"),
+		})
+		jamFeesKey := "jamFees" + strconv.Itoa(i)
+		dd = append(dd, DynamicData{
+			Key:   jamFeesKey,
+			Value: FormatAmountToString(pp.JamFees, ""),
+		})
+		stripeFeesKey := "stripeFees" + strconv.Itoa(i)
+		dd = append(dd, DynamicData{
+			Key:   stripeFeesKey,
+			Value: FormatAmountToString(pp.StripeFees, ""),
+		})
+		userAmountKey := "userAmount" + strconv.Itoa(i)
+		dd = append(dd, DynamicData{
+			Key:   userAmountKey,
+			Value: FormatAmountToString(pp.UserAmount, "$"),
+		})
+	}
 
 	emails := []string{}
 	emails = append(emails, payout.Email)
@@ -284,6 +313,24 @@ func SendPaymentReceivedEmail(c stripe.Charge) {
 		podSelector = c.Metadata["podSelector"]
 	}
 
+	amountAfterFees := ""
+	if _, ok := c.Metadata["amountAfterFees"]; ok {
+		amountAfterFees = c.Metadata["amountAfterFees"]
+		amountAfterFees = "$" + FormatStringAmountNoSymbol(amountAfterFees)
+	}
+
+	jamFee := ""
+	if _, ok := c.Metadata["jamFees"]; ok {
+		jamFee = c.Metadata["jamFees"]
+		jamFee = FormatStringAmountNoSymbol(jamFee)
+	}
+
+	stripeFee := ""
+	if _, ok := c.Metadata["stripeFees"]; ok {
+		stripeFee = c.Metadata["stripeFees"]
+		stripeFee = FormatStringAmountNoSymbol(stripeFee)
+	}
+
 	collaborators, podName, err := getCollaboratorsFromPodSelector(podSelector)
 	if err != nil {
 		return
@@ -294,7 +341,19 @@ func SendPaymentReceivedEmail(c stripe.Charge) {
 	dd := []DynamicData{}
 	dd = append(dd, DynamicData{
 		Key:   "amount",
-		Value: FormatAmountToString(c.Amount),
+		Value: FormatAmountToString(c.Amount, "$"),
+	})
+	dd = append(dd, DynamicData{
+		Key:   "amountAfterFees",
+		Value: amountAfterFees,
+	})
+	dd = append(dd, DynamicData{
+		Key:   "stripeFee",
+		Value: stripeFee,
+	})
+	dd = append(dd, DynamicData{
+		Key:   "jamFee",
+		Value: jamFee,
 	})
 	dd = append(dd, DynamicData{
 		Key:   "customerEmail",
@@ -308,6 +367,10 @@ func SendPaymentReceivedEmail(c stripe.Charge) {
 		Key:   "podName",
 		Value: podName,
 	})
+	dd = append(dd, DynamicData{
+		Key:   "JAM_FEE",
+		Value: JAM_PERCENT_FEE_STRING,
+	})
 
 	emails := []string{}
 	// email all collaborators
@@ -317,7 +380,7 @@ func SendPaymentReceivedEmail(c stripe.Charge) {
 	}
 
 	SendEmail("payment", SENDGRID_PAYMENT_RECEIVED_TEMPLATE, emails, dd)
-
+	log.Println("SENT PAYMENT EMAIL!")
 	SendPaymentReceiptEmail(c, podName)
 }
 
@@ -326,7 +389,7 @@ func SendPaymentReceiptEmail(c stripe.Charge, podName string) {
 	dd := []DynamicData{}
 	dd = append(dd, DynamicData{
 		Key:   "amount",
-		Value: FormatAmountToString(int64(c.Amount)),
+		Value: FormatAmountToString(int64(c.Amount), "$"),
 	})
 	dd = append(dd, DynamicData{
 		Key:   "podName",
@@ -389,8 +452,8 @@ func SendWalletJoinedEmail(podID uint) {
 	SendEmail("notification", SENDGRID_WALLET_JOINED_TEMPLATE, emails, dd)
 }
 
-func SendWalletDestroyedEmail(podSelector string) {
-	log.Println("SendRefundScheduledEmail")
+func SendWalletDestroyScheduledEmail(podSelector string) {
+	log.Println("SendWalletDestroyScheduledEmail")
 
 	collaborators, podName, err := getCollaboratorsFromPodSelector(podSelector)
 	if err != nil {
@@ -408,7 +471,7 @@ func SendWalletDestroyedEmail(podSelector string) {
 		emails = append(emails, user.Username)
 	}
 
-	SendEmail("notification", SENDGRID_WALLET_DESTROYED_TEMPLATE, emails, dd)
+	SendEmail("info", SENDGRID_WALLET_DESTROYED_TEMPLATE, emails, dd)
 }
 
 func SendVerificationEmail(c echo.Context) error {
@@ -454,7 +517,7 @@ func SendEmail(sender string, templateId string, toEmails []string, dynamicData 
 
 	m := mail.NewV3Mail()
 
-	address := sender + "@jamwallet.com"
+	address := sender + "@jamwallet.app"
 	name := "Jam Wallet"
 	e := mail.NewEmail(name, address)
 	m.SetFrom(e)

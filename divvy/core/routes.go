@@ -8,9 +8,6 @@ import (
 // var SocketServer *socketio.Server
 
 func MakeRoutes(e *echo.Echo) {
-	// socket.io server connection
-	// SocketServer = MakeSocketServer()
-
 	// stripe webhook listener
 	e.Any("/webhook", echo.HandlerFunc(HandleStripeWebhook))
 
@@ -52,13 +49,17 @@ func MakeRoutes(e *echo.Echo) {
 	r.GET("/avatar", GetAvatar)
 	r.GET("/pod/list", GetPodList)
 	r.POST("/pod", CreatePod)
-	r.POST("/pod/join", JoinPod)
+
 	r.POST("/pod/join/summary", GetJoinPod)
 	r.POST("/stripe/account", LinkStripeAccount)
 	r.GET("/stripe/account", GetStripeAccount)
 	r.POST("/verify/:verificationCode", VerifyAccountEmail)
 	r.POST("/sendVerification", SendVerificationEmail)
 	r.POST("/user/transfers/:userSelector", GetUserTransfers)
+
+	rp := r.Group("")
+	rp.Use(PodIsNotScheduledForDelete)
+	rp.POST("/pod/join", JoinPod)
 
 	// s: require token, pod collaborator
 	s := r.Group("")
@@ -76,19 +77,28 @@ func MakeRoutes(e *echo.Echo) {
 	// v: require token, pod collaborator, and admin
 	v := s.Group("")
 	v.Use(IsAdmin)
-	v.POST("/pod/invite/:podSelector", SendInvite)
+	v.PATCH("/pod/restore/:podSelector", CancelScheduleDestroyPod)
 	v.DELETE("/pod/invite/:podSelector/:selector", DeleteInvite)
-	v.PATCH("/collaborator/role/:podSelector", UpdateCollaboratorRole)
-	v.DELETE("/collaborator/:podSelector/:selector", DeleteCollaborator)
-	v.PATCH("/pod/destroy/:podSelector", ScheduleDestroyPod)
-	v.PATCH("/pod/:podSelector", UpdatePod)
+
+	// vp: require token, pod collaborator, admin, pod cant be schedule for delete
+	vp := v.Group("")
+	vp.Use(PodIsNotScheduledForDelete)
+	vp.PATCH("/pod/destroy/:podSelector", ScheduleDestroyPod)
+	vp.PATCH("/pod/:podSelector", UpdatePod)
+	vp.POST("/pod/invite/:podSelector", SendInvite)
+	vp.PATCH("/collaborator/role/:podSelector", UpdateCollaboratorRole)
+	vp.DELETE("/collaborator/:podSelector/:selector", DeleteCollaborator)
 
 	// a: require token, stripe account, pod collaborator
 	a := s.Group("")
 	a.Use(HasStripeAccount)
-	a.POST("/stripe/checkoutsession/:podSelector", CreateCheckoutSession)
 	a.POST("/stripe/refund/:podSelector/:txnId", ScheduleRefund)
 	a.POST("/stripe/refund/cancel/:podSelector/:txnId", CancelScheduledRefund)
+
+	// a: require token, stripe account, pod collaborator, pod cant be schedule for delete
+	ap := a.Group("")
+	ap.Use(PodIsNotScheduledForDelete)
+	ap.POST("/stripe/checkoutsession/:podSelector", CreateCheckoutSession)
 
 	// super: requires token and superadmin
 	super := r.Group("")

@@ -383,13 +383,25 @@ func getCollaboratorTransferAmountTilted(collaborator Collaborator, amountAfterF
 	return transferAmount
 }
 
+type PodPayout struct {
+	PodID              uint   `json:"podId"`
+	PodName            string `json:"podName"`
+	UserAmount         int64  `json:"userAmount"`
+	PodAmount          int64  `json:"podAmount"`
+	PodAmountAfterFees int64  `json:"podAmountAfterFees"`
+	JamFees            int64  `json:"jamFees"`
+	StripeFees         int64  `json:"stripeFees"`
+}
+
 // use this to send payout emails
 type UserPayout struct {
-	Amount           int64  `json:"amount"`
-	TransactionCount int    `json:"transactionCount"`
-	Fees             int64  `json:"fees"`
-	Email            string `json:"email"`
-	UserID           uint   `json:"userId"`
+	PodPayouts       []PodPayout `json:"podPayouts"`
+	Amount           int64       `json:"amount"`
+	TransactionCount int         `json:"transactionCount"`
+	Fees             int64       `json:"fees"`
+	Email            string      `json:"email"`
+	DisplayName      string      `json:"displayName"`
+	UserID           uint        `json:"userId"`
 }
 
 // this is a cron job!
@@ -569,7 +581,13 @@ func DoChargeTransfersAndRefundsCron() {
 					continue
 				}
 
-				// when not an even distribution, calc collaboratorTransferAmount here
+				userTransferExists := UserTransfer{}
+				result = DB.Where("user_selector = ?", userSelector).Where("charge_id = ?", c.ID).First(&userTransferExists)
+				if result.Error == nil {
+					log.Println("Oh no, we got a duplicate transfer! we blocked it")
+					log.Println(c.ID)
+					continue
+				}
 
 				userStripeAccount := collaborator.User.StripeAccount.AcctID
 				transferParams := &stripe.TransferParams{
@@ -603,6 +621,7 @@ func DoChargeTransfersAndRefundsCron() {
 					CollaboratorSelector: collaboratorSelector,
 					PodSelector:          pod.Selector,
 				}
+
 				result = DB.Create(&userTransfer)
 
 				if result.Error != nil {
@@ -613,8 +632,21 @@ func DoChargeTransfersAndRefundsCron() {
 				payoutIndex := getPayoutIndex(payoutsArray, collaborator.UserID)
 				// if there is no index found, make one
 				if payoutIndex < 0 {
+					firstPodPayout := PodPayout{
+						PodName:            pod.Name,
+						PodID:              pod.ID,
+						PodAmount:          c.Amount,
+						PodAmountAfterFees: amountAfterFees,
+						JamFees:            jamFees,
+						StripeFees:         stripeFees,
+						UserAmount:         collaboratorTransferAmount,
+					}
+					startingPodPayout := []PodPayout{}
+					startingPodPayout = append(startingPodPayout, firstPodPayout)
 					newUserPayout := UserPayout{
+						PodPayouts:       startingPodPayout,
 						UserID:           collaborator.UserID,
+						DisplayName:      collaborator.User.DisplayName,
 						Amount:           collaboratorTransferAmount,
 						Email:            collaborator.User.Username,
 						Fees:             0,
@@ -625,6 +657,24 @@ func DoChargeTransfersAndRefundsCron() {
 					// otherwise add to existing
 					payoutsArray[payoutIndex].Amount = payoutsArray[payoutIndex].Amount + collaboratorTransferAmount
 					payoutsArray[payoutIndex].TransactionCount = payoutsArray[payoutIndex].TransactionCount + 1
+
+					// add to pod payouts, this is so we can split up payouts by pod in email
+					podPayoutIndex := getPodPayoutIndex(payoutsArray[payoutIndex].PodPayouts, pod.ID)
+					if podPayoutIndex < 0 {
+						newPayout := PodPayout{
+							PodName:            pod.Name,
+							PodID:              pod.ID,
+							PodAmount:          c.Amount,
+							PodAmountAfterFees: amountAfterFees,
+							JamFees:            jamFees,
+							StripeFees:         stripeFees,
+							UserAmount:         collaboratorTransferAmount,
+						}
+						payoutsArray[payoutIndex].PodPayouts = append(payoutsArray[payoutIndex].PodPayouts, newPayout)
+					} else {
+						payoutsArray[payoutIndex].PodPayouts[podPayoutIndex].UserAmount = payoutsArray[payoutIndex].PodPayouts[podPayoutIndex].UserAmount + collaboratorTransferAmount
+						payoutsArray[payoutIndex].PodPayouts[podPayoutIndex].PodAmount = payoutsArray[payoutIndex].PodPayouts[podPayoutIndex].PodAmount + amountAfterFees
+					}
 				}
 
 				log.Println("transferred")
@@ -680,7 +730,22 @@ func getPayoutIndex(payouts []UserPayout, userID uint) int {
 			index = i
 			break
 		}
+	}
+	return index
+}
 
+func getPodPayoutIndex(podPayouts []PodPayout, podID uint) int {
+	index := -1
+
+	log.Println("getPodPayoutIndex")
+	log.Println(podID)
+
+	for i, p := range podPayouts {
+		log.Println(p.PodID)
+		if p.PodID == podID {
+			index = i
+			break
+		}
 	}
 	return index
 }
@@ -892,6 +957,53 @@ func GetPodUnavailableChargeList(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, charges)
+}
+
+func Direct_GetPodUnavailableCharges(podSelector string) []ChargeListItem {
+	// get from params
+
+	stripe.Key = getStripeKey()
+
+	// 30 days
+	createdSinceDaysGo := time.Now().AddDate(-30, 0, 0).Unix()
+
+	params := &stripe.ChargeListParams{
+		TransferGroup: stripe.String(podSelector),
+		CreatedRange: &stripe.RangeQueryParams{
+			GreaterThan: createdSinceDaysGo,
+		},
+	}
+
+	charges := []ChargeListItem{}
+	i := charge.List(params)
+
+	for i.Next() {
+		c := i.Charge()
+		if c.Refunded {
+			continue
+		}
+
+		if _, ok := c.Metadata["transfers_complete"]; ok {
+			//this charge was transfered! skip it
+			continue
+		}
+		o := ChargeListItem{
+			ID: c.ID,
+			PaymentMethodCard: PaymentMethodCard{
+				Last4:   c.PaymentMethodDetails.Card.Last4,
+				Network: c.PaymentMethodDetails.Card.Network,
+			},
+			Amount:   c.Amount,
+			Refunded: c.Refunded,
+			Metadata: c.Metadata,
+			Created:  c.Created,
+			Paid:     c.Paid,
+		}
+
+		charges = append(charges, o)
+	}
+
+	return charges
 }
 
 func GetPodPayoutList(c echo.Context) error {

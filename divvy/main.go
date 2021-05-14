@@ -48,8 +48,9 @@ func main() {
 	core.MigrateUp()
 
 	c := cron.New()
-	c.AddFunc("@every 10m", func() {
+	c.AddFunc("@every 1m", func() {
 		core.DoChargeTransfersAndRefundsCron()
+		core.DoPodDeletionCron()
 		fmt.Println("cron ran!")
 	})
 	c.Start()

@@ -4,6 +4,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -147,15 +148,28 @@ func BuildPod(pod Pod) PodAPI {
 		MemberCount:   memberCount,
 		PayoutType:    pod.PayoutType,
 		LifecycleType: pod.LifecycleType,
+		ToDelete:      pod.ToDelete,
 	}
 }
 
-func FormatAmountToString(amount int64) string {
+func FormatAmountToString(amount int64, symbol string) string {
 	// p := strconv.Itoa(int(amount))
 
 	af := float64(amount) / 100
 
-	ac := accounting.Accounting{Symbol: "$", Precision: 2}
+	ac := accounting.Accounting{Symbol: symbol, Precision: 2}
+
+	a := ac.FormatMoney(af)
+
+	return a
+}
+
+func FormatStringAmountNoSymbol(amount string) string {
+	p, _ := strconv.Atoi(amount)
+
+	af := float64(p) / 100
+
+	ac := accounting.Accounting{Symbol: "", Precision: 2}
 
 	a := ac.FormatMoney(af)
 

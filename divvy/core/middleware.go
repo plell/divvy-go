@@ -119,6 +119,24 @@ func IsPodMember(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+// requires posSelector in route url
+func PodIsNotScheduledForDelete(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		podSelector := c.Param("podSelector")
+		pod := Pod{}
+		result := DB.Where("selector = ?", podSelector).First(&pod)
+		if result.Error != nil {
+			return c.String(http.StatusInternalServerError, "Cannot find wallet")
+		}
+
+		if pod.ToDelete != "" {
+			return c.String(http.StatusInternalServerError, "This wallet is scheduled for delete.")
+		}
+
+		return next(c)
+	}
+}
+
 func UserExists(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		userSelector := c.Param("userSelector")

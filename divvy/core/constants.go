@@ -5,6 +5,8 @@ var STRIPE_PERCENT_FEE = .029 // 2.9 percent
 var JAM_FLAT_FEE = 0.00       // 10 cents
 var JAM_PERCENT_FEE = .05     // 5 percent
 
+var JAM_PERCENT_FEE_STRING = "5%" // 5 percent
+
 // jam fee is 5%
 // total fee is 7.9% + 30 cents
 

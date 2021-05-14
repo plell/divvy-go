@@ -428,8 +428,71 @@ func ScheduleDestroyPod(c echo.Context) error {
 	}
 
 	// send email to all collaborators
-	SendWalletDestroyedEmail(podSelector)
+	SendWalletDestroyScheduledEmail(podSelector)
 
 	responseString := pod.Name + " will be deleted when payouts are finished."
 	return c.String(http.StatusOK, responseString)
+}
+
+func CancelScheduleDestroyPod(c echo.Context) error {
+	podSelector := c.Param("podSelector")
+
+	pod := Pod{}
+	result := DB.Where("selector = ?", podSelector).First(&pod)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't find wallet")
+	}
+	pod.ToDelete = ""
+	result = DB.Save(&pod)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't save wallet")
+	}
+
+	// send email to all collaborators
+	SendWalletDestroyScheduledEmail(podSelector)
+
+	responseString := pod.Name + " has been restored!"
+	return c.String(http.StatusOK, responseString)
+}
+
+func DoPodDeletionCron() {
+	pods := []Pod{}
+	result := DB.Where("to_delete != ?", "").Find(&pods)
+	if result.Error != nil {
+		return
+	}
+
+	for i, pod := range pods {
+
+		// fiveDaysAgo := time.Now().AddDate(-5, 0, 0).Unix()
+		// layout := "2021-05-13 16:43:45.670736 -0700 PDT m=+761.179192342"
+		// t, err := time.Parse(layout, pod.ToDelete)
+
+		// if err != nil {
+		// 	log.Println("COULDN'T PARSE THE TIME!")
+		// }
+
+		// log.Println("HERE'S THE TIME")
+		// log.Println(t.Unix())
+
+		// if t.Unix() > fiveDaysAgo {
+		// 	// hasnt been 5 days
+		// 	continue
+		// }
+
+		// if no pending amount
+		pendingCharges := Direct_GetPodUnavailableCharges(pod.Selector)
+		if len(pendingCharges) > 0 {
+			// has pending charges, dont delete
+			continue
+		}
+
+		thisPod := pods[i]
+
+		result := DB.Delete(&thisPod)
+
+		if result.Error != nil {
+			log.Println("couldn't delete pod")
+		}
+	}
 }
