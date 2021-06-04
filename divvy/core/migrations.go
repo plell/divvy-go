@@ -24,6 +24,9 @@ func MigrateUp() {
 		&BetaKey{},
 		&EmailVerificationCode{},
 		&UserTransfer{},
+		&Customer{},
+		&Chargeback{},
+		&Refund{},
 	)
 
 	insertStaticRecords()
@@ -34,6 +37,8 @@ func insertStaticRecords() {
 	ut := UserType{Name: "Basic", ID: USER_TYPE_BASIC}
 	DB.Create(&ut)
 	ut = UserType{Name: "Super", ID: USER_TYPE_SUPER}
+	DB.Create(&ut)
+	ut = UserType{Name: "Customer", ID: USER_TYPE_CUSTOMER}
 	DB.Create(&ut)
 
 	DB.Exec(`TRUNCATE TABLE pod_payout_types`)

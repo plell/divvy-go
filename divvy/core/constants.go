@@ -31,6 +31,7 @@ var ROLE_TYPE_LIMITED = uint(3)
 // UserType
 var USER_TYPE_BASIC = uint(1)
 var USER_TYPE_SUPER = uint(2)
+var USER_TYPE_CUSTOMER = uint(3)
 
 // PodType
 var POD_LIFECYCLE_COLLECTIVE = uint(1)

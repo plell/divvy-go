@@ -17,6 +17,9 @@ import (
 	"github.com/stripe/stripe-go/v72/balance"
 	"github.com/stripe/stripe-go/v72/charge"
 	"github.com/stripe/stripe-go/v72/checkout/session"
+	"github.com/stripe/stripe-go/v72/customer"
+
+	customersession "github.com/stripe/stripe-go/v72/billingportal/session"
 	"github.com/stripe/stripe-go/v72/payout"
 	"github.com/stripe/stripe-go/v72/refund"
 	"github.com/stripe/stripe-go/v72/reversal"
@@ -68,6 +71,91 @@ func GetStripeAccount(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, acct)
+}
+
+func CreateCustomerAfterUserLogin(c echo.Context, user_id uint) error {
+	user := User{}
+	result := DB.First(&user, user_id)
+
+	if result.Error != nil {
+		return c.String(http.StatusInternalServerError, "User not found.")
+	}
+
+	stripe.Key = getStripeKey()
+
+	params := &stripe.CustomerParams{
+		Email: stripe.String(user.Username),
+	}
+
+	cstmr, err := customer.New(params)
+
+	if err != nil {
+		return AbstractError(c, "Couldn't create customer")
+	}
+
+	cust := Customer{
+		UserID:                  user_id,
+		StripeCustomerAccountID: cstmr.ID,
+	}
+
+	result = DB.Create(&cust)
+
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't link customer to user")
+	}
+
+	return nil
+}
+
+func CreateCustomerPortalSession(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	cstmr := Customer{}
+
+	result := DB.Where("user_id = ?", user_id).First(&cstmr)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't find customer")
+	}
+
+	stripe.Key = getStripeKey()
+
+	params := &stripe.BillingPortalSessionParams{
+		Customer:  stripe.String(cstmr.StripeCustomerAccountID),
+		ReturnURL: stripe.String("https://jamwallet.store/account"),
+	}
+	s, err := customersession.New(params)
+	if err != nil {
+		return AbstractError(c, "Couldn't make customer session")
+	}
+	return c.String(http.StatusOK, s.URL)
+}
+
+func GetStripeCustomerAccount(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	cust := Customer{}
+
+	result := DB.Where("user_id = ?", user_id).First(&cust)
+
+	if result.Error != nil {
+		return c.String(http.StatusInternalServerError, "Please finish Stripe account creation.")
+	}
+
+	stripe.Key = getStripeKey()
+
+	cstmr, err := customer.Get(cust.StripeCustomerAccountID, nil)
+
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	return c.JSON(http.StatusOK, cstmr)
 }
 
 func getTotalAmountAfterFees(amount int64) (int64, int64, int64) {
@@ -203,6 +291,7 @@ type CheckoutSessionRequest struct {
 	Amount      int64  `json:"amount"`
 	PodSelector string `json:"podSelector"`
 	Currency    string `json:"currency"`
+	CustomerID  string `json:"customerId"`
 }
 
 func CreateCheckoutSession(c echo.Context) error {
@@ -301,6 +390,18 @@ func CreateCheckoutSession(c echo.Context) error {
 	params.AddMetadata("podSelector", pod.Selector)
 	params.AddMetadata("collaboratorSelector", collaborator.Selector)
 
+	// if customer is given
+	if request.CustomerID != "" {
+		// get customer
+		cstmr, err := customer.Get(request.CustomerID, nil)
+		if err != nil {
+			return AbstractError(c, "Couldn't get customer!")
+		}
+		// fill in customer data
+		params.Customer = &cstmr.ID
+		params.CustomerEmail = &cstmr.Email
+	}
+
 	session, err := session.New(params)
 
 	if err != nil {
@@ -314,6 +415,97 @@ func CreateCheckoutSession(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, data)
+}
+
+func UpdateCheckoutSessionByCustomer(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	sessionId := c.Param("sessionId")
+
+	stripe.Key = getStripeKey()
+
+	ogSession, err := session.Get(sessionId, nil)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "Couldn't get session")
+	}
+
+	// add user selector to metadata for metadata
+	user := User{}
+	result := DB.Preload("Customer").First(&user, user_id)
+	if result.Error != nil {
+		return c.String(http.StatusInternalServerError, "no user")
+	}
+
+	// get customer from user
+	jamcustomer := user.Customer
+
+	// get customer from stripe
+	cstmr, err := customer.Get(jamcustomer.StripeCustomerAccountID, nil)
+	if err != nil {
+		return AbstractError(c, "Couldn't get customer!")
+	}
+
+	var metaDataPack map[string]string
+
+	metaDataPack = make(map[string]string)
+	transferGroup := ""
+
+	if _, ok := cstmr.Metadata["userSelector"]; ok {
+		metaDataPack["userSelector"] = cstmr.Metadata["userSelector"]
+	}
+	if _, ok := cstmr.Metadata["podSelector"]; ok {
+		metaDataPack["podSelector"] = cstmr.Metadata["podSelector"]
+		transferGroup = cstmr.Metadata["podSelector"]
+	}
+	if _, ok := cstmr.Metadata["collaboratorSelector"]; ok {
+		metaDataPack["collaboratorSelector"] = cstmr.Metadata["collaboratorSelector"]
+	}
+	if _, ok := cstmr.Metadata["stripeFees"]; ok {
+		metaDataPack["stripeFees"] = cstmr.Metadata["stripeFees"]
+	}
+	if _, ok := cstmr.Metadata["jamFees"]; ok {
+		metaDataPack["jamFees"] = cstmr.Metadata["jamFees"]
+	}
+	if _, ok := cstmr.Metadata["amountAfterFees"]; ok {
+		metaDataPack["amountAfterFees"] = cstmr.Metadata["amountAfterFees"]
+	}
+
+	params := &stripe.CheckoutSessionParams{
+		Customer: stripe.String(cstmr.ID),
+		PaymentIntentData: &stripe.CheckoutSessionPaymentIntentDataParams{
+			TransferGroup: stripe.String(transferGroup),
+			Metadata:      metaDataPack,
+		},
+		PaymentMethodTypes: stripe.StringSlice([]string{
+			"card",
+		}),
+		Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			&stripe.CheckoutSessionLineItemParams{
+				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
+					Currency: stripe.String(string(stripe.CurrencyUSD)),
+					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
+						Name: stripe.String("Sale"),
+					},
+					UnitAmount: stripe.Int64(ogSession.PaymentIntent.Amount),
+				},
+				Quantity: stripe.Int64(1),
+			},
+		},
+		SuccessURL: stripe.String("https://jamwallet.store/#/success"),
+		CancelURL:  stripe.String("https://jamwallet.store/#/fail"),
+	}
+
+	params.AddMetadata("userSelector", metaDataPack["userSelector"])
+	params.AddMetadata("podSelector", metaDataPack["podSelector"])
+	params.AddMetadata("collaboratorSelector", metaDataPack["collaboratorSelector"])
+
+	session, err := session.New(params)
+
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, err)
+	}
+
+	return c.String(http.StatusOK, session.ID)
 }
 
 func getAdminAndNonadminCounts(collaborators []Collaborator) (int64, int64) {
@@ -456,7 +648,7 @@ func DoChargeTransfersAndRefundsCron() {
 		log.Println(pod.Name)
 
 		if len(collaborators) < 1 {
-			log.Println("NO COLLABORATORS FOR POD! This should never happen")
+			log.Println("NO COLLABORATORS WITH STRIPE ACCOUNTS FOR POD! Skip")
 			log.Println(pod.ID)
 			continue
 		}

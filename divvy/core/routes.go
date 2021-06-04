@@ -13,6 +13,7 @@ func MakeRoutes(e *echo.Echo) {
 
 	// token not required group
 	e.GET("/avatarOptions", GetAvatarOptions)
+	e.POST("/customerLogin", CustomerLogin)
 	e.POST("/login", Login)
 	e.POST("/logout", Logout)
 	// for donation
@@ -56,10 +57,11 @@ func MakeRoutes(e *echo.Echo) {
 	r.POST("/verify/:verificationCode", VerifyAccountEmail)
 	r.POST("/sendVerification", SendVerificationEmail)
 	r.POST("/user/transfers/:userSelector", GetUserTransfers)
+	r.POST("/pod/join", JoinPod)
 
-	rp := r.Group("")
-	rp.Use(PodIsNotScheduledForDelete)
-	rp.POST("/pod/join", JoinPod)
+	r.GET("/stripe/customerAccount", GetStripeCustomerAccount)
+	r.GET("/stripe/customerPortal", CreateCustomerPortalSession)
+	r.PATCH("/stripe/checkoutsession/:sessionId", UpdateCheckoutSessionByCustomer)
 
 	// s: require token, pod collaborator
 	s := r.Group("")

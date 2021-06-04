@@ -38,6 +38,7 @@ type User struct {
 	StripeAccount         StripeAccount //`gorm:"PRELOAD:false"`
 	Collaborator          []Collaborator
 	EmailVerificationCode EmailVerificationCode
+	Customer              Customer
 	Locked                bool   `json:"locked"`
 	LockedReason          string `json:"lockedReason"`
 	ByTheBy
@@ -232,6 +233,48 @@ var EMAIL_VERIFICATION_CODE_TABLE = "email_verification_codes"
 type EmailVerificationCode struct {
 	Code   string `json:"code"`
 	UserID uint   `json:"userId"`
+	gorm.Model
+	ByTheBy
+}
+
+// this table is for customers, login on jamwallet.store, so you dont
+// need to input your card information all the time
+// do 2 factor for these guys
+var CUSTOMER_TABLE = "customers"
+
+type Customer struct {
+	// customers ARE A USER TYPE, all customers have a user record
+	UserID uint `json:"userID"`
+	// login info for customer
+	StripeCustomerAccountID string `json:"stripeCustomerAccountId"`
+	gorm.Model
+	ByTheBy
+}
+
+var CHARGEBACK_TABLE = "chargebacks"
+
+type Chargeback struct {
+	ChargeID       string `json:"chargeId"`
+	Pod            Pod
+	PodID          uint `json:"podId"`
+	Collaborator   Collaborator
+	CollaboratorID uint `json:"collaboratorId"`
+	User           User
+	UserID         uint `json:"userId"`
+	gorm.Model
+	ByTheBy
+}
+
+var REFUND_TABLE = "refunds"
+
+type Refund struct {
+	ChargeID       string `json:"chargeId"`
+	Pod            Pod
+	PodID          uint `json:"podId"`
+	Collaborator   Collaborator
+	CollaboratorID uint `json:"collaboratorId"`
+	User           User
+	UserID         uint `json:"userId"`
 	gorm.Model
 	ByTheBy
 }

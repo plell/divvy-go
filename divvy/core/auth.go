@@ -119,6 +119,78 @@ func Login(c echo.Context) error {
 
 }
 
+func CustomerLogin(c echo.Context) error {
+	mySigningKey := GetSigningKey()
+	ip := c.RealIP()
+
+	// bind json to the login variable
+	creds := Credentials{}
+	defer c.Request().Body.Close()
+	err := json.NewDecoder(c.Request().Body).Decode(&creds)
+	if err != nil {
+		log.Println("failed reading login request, $s", err)
+		return c.String(http.StatusInternalServerError, "")
+	}
+
+	user := User{}
+
+	// Check in your db if the user exists or not
+	result := DB.Preload("Avatar").Preload("Customer").Where("username = ?", creds.Username).First(&user)
+
+	if result.Error != nil {
+		MakeLoginHistory(creds.Username, ip, false)
+		return AbstractError(c, "Email or password incorrect")
+	}
+
+	// Check if password is correct
+	if comparePasswords(user.Password, creds.Password) == false {
+		// logged failed login
+		MakeLoginHistory(creds.Username, ip, false)
+		return AbstractError(c, "Email or password incorrect")
+	}
+
+	claims := &jwtCustomClaims{
+		UserID:       user.ID,
+		UserSelector: user.Selector,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(time.Hour * (24 * 7)).Unix(),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Generate encoded token and send it as response.
+	// The signing string should be secret (a generated UUID          works too)
+	t, err := token.SignedString(mySigningKey)
+	if err != nil {
+		return err
+	}
+
+	formatUser := BuildUser(user)
+
+	response := LoginResponse{
+		Token: t,
+		User:  formatUser}
+
+	MakeLoginHistory(creds.Username, ip, true)
+
+	log.Println("has customer?")
+	log.Println("send verification email")
+	// login is correct! check if account is verified
+
+	// if this user has no customer associated, make them a customer record
+	if user.Customer.UserID == 0 {
+		err := CreateCustomerAfterUserLogin(c, user.ID)
+
+		if err != nil {
+			return AbstractError(c, "Couldn't create customer")
+		}
+	}
+
+	return c.JSON(http.StatusOK, response)
+
+}
+
 type PasswordChangeReq struct {
 	Code     string `json:"code"`
 	Password string `json:"password"`
