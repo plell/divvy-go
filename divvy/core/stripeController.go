@@ -15,6 +15,7 @@ import (
 	"github.com/stripe/stripe-go/v72/account"
 	"github.com/stripe/stripe-go/v72/accountlink"
 	"github.com/stripe/stripe-go/v72/balance"
+	"github.com/stripe/stripe-go/v72/card"
 	"github.com/stripe/stripe-go/v72/charge"
 	"github.com/stripe/stripe-go/v72/checkout/session"
 	"github.com/stripe/stripe-go/v72/customer"
@@ -133,6 +134,23 @@ func CreateCustomerPortalSession(c echo.Context) error {
 	return c.String(http.StatusOK, s.URL)
 }
 
+type CustomerAddress struct {
+	Line1      string `json:"line1"`
+	Line2      string `json:"line2"`
+	City       string `json:"city"`
+	Country    string `json:"country"`
+	State      string `json:"state"`
+	PostalCode string `json:"postal_code"`
+}
+
+type CustomerResponse struct {
+	ID               string          `json:"id"`
+	DefaultLast4     string          `json:"defaultLast4"`
+	DefaultCardBrand string          `json:"defaultCardBrand"`
+	Email            string          `json:"email"`
+	Address          CustomerAddress `json:"address"`
+}
+
 func GetStripeCustomerAccount(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
@@ -155,7 +173,46 @@ func GetStripeCustomerAccount(c echo.Context) error {
 		return AbstractError(c, "Something went wrong")
 	}
 
-	return c.JSON(http.StatusOK, cstmr)
+	log.Println("cstmr.DefaultSource")
+	log.Println(cstmr.DefaultSource)
+	log.Println("cstmr.Sources")
+	log.Println(cstmr.Sources)
+
+	cr := CustomerResponse{
+		ID:    cstmr.ID,
+		Email: cstmr.Email,
+	}
+
+	// get default payment card if there is a default source
+	if cstmr.DefaultSource != nil {
+		params := &stripe.CardParams{
+			Customer: stripe.String(cstmr.ID),
+		}
+
+		crd, err := card.Get(
+			cstmr.DefaultSource.ID,
+			params,
+		)
+
+		if err != nil {
+			return AbstractError(c, "Something went wrong")
+		}
+
+		cra := CustomerAddress{
+			Line1:      crd.AddressLine1,
+			Line2:      crd.AddressLine2,
+			City:       crd.AddressCity,
+			Country:    crd.AddressCountry,
+			State:      crd.AddressState,
+			PostalCode: crd.AddressZip,
+		}
+
+		cr.DefaultLast4 = string(crd.Last4)
+		cr.DefaultCardBrand = string(crd.Brand)
+		cr.Address = cra
+	}
+
+	return c.JSON(http.StatusOK, cr)
 }
 
 func getTotalAmountAfterFees(amount int64) (int64, int64, int64) {
@@ -425,7 +482,7 @@ func UpdateCheckoutSessionByCustomer(c echo.Context) error {
 
 	ogSession, err := session.Get(sessionId, nil)
 	if err != nil {
-		return c.String(http.StatusInternalServerError, "Couldn't get session")
+		return c.String(http.StatusInternalServerError, "This sale is expired")
 	}
 
 	// add user selector to metadata for metadata

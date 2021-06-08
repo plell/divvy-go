@@ -95,18 +95,22 @@ func HasStripeAccount(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-// requires posSelector in route url
+// requires podSelector in route url
 func IsPodMember(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		log.Println("IsPodMember?")
+
 		user := c.Get("user").(*jwt.Token)
 		claims := user.Claims.(*jwtCustomClaims)
 		user_id := claims.UserID
-		log.Println("IsPodMember?")
+
 		podSelector := c.Param("podSelector")
+		log.Println(podSelector)
+
 		pod := Pod{}
 		result := DB.Where("selector = ?", podSelector).First(&pod)
 		if result.Error != nil {
-			return c.String(http.StatusInternalServerError, "Cannot find wallet, reload page")
+			return AbstractError(c, "Can't find pod")
 		}
 
 		collaborator := Collaborator{}
@@ -114,6 +118,8 @@ func IsPodMember(next echo.HandlerFunc) echo.HandlerFunc {
 		if result.Error != nil {
 			return c.String(http.StatusInternalServerError, "You're not a member of this wallet")
 		}
+
+		log.Println("yes is pod member!")
 
 		return next(c)
 	}
