@@ -98,7 +98,11 @@ func MakeRoutes(e *echo.Echo) {
 	a.Use(HasStripeAccount)
 	a.POST("/stripe/refund/:podSelector/:txnId", ScheduleRefund)
 	a.POST("/stripe/refund/cancel/:podSelector/:txnId", CancelScheduledRefund)
-	a.POST("/stripe/checkoutSession/:podSelector", CreateCheckoutSession)
+
+	// a: require token, stripe account, pod collaborator, pod not deleting
+	ap := a.Group("")
+	ap.Use(PodIsNotScheduledForDelete)
+	ap.POST("/stripe/checkoutSession/:podSelector", CreateCheckoutSession)
 
 	// super: requires token and superadmin
 	super := r.Group("")

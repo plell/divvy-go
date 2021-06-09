@@ -880,6 +880,7 @@ func DoChargeTransfersAndRefundsCron() {
 					TransferAmount:       collaboratorTransferAmount,
 					UserSelector:         userSelector,
 					CollaboratorSelector: collaboratorSelector,
+					PodSelector:          pod.Selector,
 					PodID:                pod.ID,
 				}
 
