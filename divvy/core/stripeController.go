@@ -440,8 +440,8 @@ func CreateCheckoutSession(c echo.Context) error {
 				Quantity: stripe.Int64(1),
 			},
 		},
-		SuccessURL: stripe.String("https://jamwallet.store/#/success"),
-		CancelURL:  stripe.String("https://jamwallet.store/#/fail"),
+		SuccessURL: stripe.String("https://jamwallet.store/success"),
+		CancelURL:  stripe.String("https://jamwallet.store/fail"),
 	}
 
 	params.AddMetadata("userSelector", user.Selector)
@@ -554,8 +554,8 @@ func UpdateCheckoutSessionByCustomer(c echo.Context) error {
 				Quantity: stripe.Int64(1),
 			},
 		},
-		SuccessURL: stripe.String("https://jamwallet.store/#/success"),
-		CancelURL:  stripe.String("https://jamwallet.store/#/fail"),
+		SuccessURL: stripe.String("https://jamwallet.store/success"),
+		CancelURL:  stripe.String("https://jamwallet.store/fail"),
 	}
 
 	params.AddMetadata("userSelector", metaDataPack["userSelector"])
@@ -720,8 +720,14 @@ func DoChargeTransfersAndRefundsCron() {
 		adminCount, nonadminCount := getAdminAndNonadminCounts(collaborators)
 		collaboratorLength := int64(len(collaborators))
 		// get charges for pod
+
+		// 30 days
+		createdSinceDaysGo := time.Now().AddDate(-30, 0, 0).Unix()
 		params := &stripe.ChargeListParams{
 			TransferGroup: stripe.String(pod.Selector),
+			CreatedRange: &stripe.RangeQueryParams{
+				GreaterThan: createdSinceDaysGo,
+			},
 		}
 
 		// this array holds refunds to-do,
@@ -977,6 +983,120 @@ func DoChargeTransfersAndRefundsCron() {
 	}
 }
 
+func DoFeeTransferToJamWalletCron() {
+	log.Println("DoChargeTransfersAndRefundsCron")
+	stripe.Key = getStripeKey()
+
+	// get account balance
+	b, err := balance.Get(nil)
+	if err != nil {
+		log.Println("error getting balance! quit cron")
+		log.Println(err)
+		return
+	}
+
+	availableBalance := int64(0)
+
+	if len(b.Available) > 0 {
+		for _, availableCharge := range b.Available {
+			availableBalance += availableCharge.Value
+		}
+	}
+
+	log.Println("availableBalance")
+	log.Println(availableBalance)
+
+	createdSinceDaysGo := time.Now().AddDate(-30, 0, 0).Unix()
+	params := &stripe.ChargeListParams{
+		CreatedRange: &stripe.RangeQueryParams{
+			GreaterThan: createdSinceDaysGo,
+		},
+	}
+
+	// get charges for last 30 days
+	i := charge.List(params)
+
+	// loop through charges
+	for i.Next() {
+
+		c := i.Charge()
+		// dont transfer refunded transactions!
+		if c.Refunded {
+			continue
+		}
+
+		// send scheduled refunds to refund
+		if _, ok := c.Metadata["toRefund"]; ok {
+			//this charge is scheduled for refund! send to refund and move on
+			if c.Metadata["toRefund"] != "cancelled" {
+				// add to refund group to process at end of transfers
+				log.Println("refund scheduled, add to refund group to process at end of transfers " + c.ID)
+				continue
+			}
+			log.Println("refund schedule was cancelled, move toward transfer")
+		}
+
+		chargeParams := &stripe.ChargeParams{}
+		jamFees := int64(0)
+		// send scheduled refunds to refund
+		if _, ok := c.Metadata["jamFees"]; ok {
+			jf, _ := strconv.Atoi(c.Metadata["jamFees"])
+			jamFees = int64(jf)
+		} else {
+			log.Println("no jam fees... skip charge")
+			continue
+		}
+
+		// check that account balance is more than amountAfterFees
+		if jamFees > availableBalance {
+			log.Println("*******************************")
+			log.Println("availableBalance")
+			log.Println(availableBalance)
+			log.Println("jamFees is greater than availableBalance, wait to transfer")
+			log.Println(jamFees)
+			continue
+		}
+
+		// take charge from balance
+		availableBalance = availableBalance - jamFees
+
+		// transfer jam fees to jamwallet stripe account
+		if _, ok := c.Metadata["jamFeesTransferred"]; ok {
+			log.Println("jam fees already transferred")
+		} else {
+			JAM_WALLET_FEE_STRIPE_ACCOUNT := os.Getenv("JAM_WALLET_FEE_STRIPE_ACCOUNT")
+
+			transferParams := &stripe.TransferParams{
+				Amount:        &jamFees,
+				Currency:      stripe.String(string(stripe.CurrencyUSD)),
+				Destination:   stripe.String(JAM_WALLET_FEE_STRIPE_ACCOUNT),
+				TransferGroup: stripe.String("JAM_WALLET_FEE_STRIPE_ACCOUNT"),
+			}
+
+			// transfer to user stripe account
+			tr, err := transfer.New(transferParams)
+
+			if err != nil {
+				log.Println("transfer failed!")
+				log.Println("transfer failed!")
+				continue
+			}
+
+			chargeParams.AddMetadata("jamFeesTransferred", tr.ID)
+		}
+
+		if chargeParams.Metadata != nil {
+			charge.Update(
+				c.ID,
+				chargeParams,
+			)
+			log.Println(c.ID)
+			log.Println("charge update done")
+		}
+	}
+
+}
+
 func getPayoutIndex(payouts []UserPayout, userID uint) int {
 	index := -1
 
@@ -1067,6 +1187,28 @@ func CreateRefund(txnId string, collaborators []Collaborator) {
 				log.Println(t.Amount)
 			}
 
+		}
+	}
+
+	// reverse jam fee collection
+	jamTransferId := ""
+	if _, ok := ch.Metadata["jamFeesTransferred"]; ok {
+		jamTransferId = ch.Metadata["jamFeesTransferred"]
+	}
+
+	if jamTransferId != "" {
+		jt, _ := transfer.Get(
+			jamTransferId,
+			nil,
+		)
+
+		jamReversalParams := &stripe.ReversalParams{
+			Amount:   stripe.Int64(jt.Amount),
+			Transfer: stripe.String(jamTransferId),
+		}
+		_, err := reversal.New(jamReversalParams)
+		if err != nil {
+			log.Println("jamfee reversal failed", jamTransferId)
 		}
 	}
 
@@ -1175,8 +1317,8 @@ func GetPodUnavailableChargeList(c echo.Context) error {
 
 	stripe.Key = getStripeKey()
 
-	// 10 days
-	createdSinceDaysGo := time.Now().AddDate(-10, 0, 0).Unix()
+	// 30 days
+	createdSinceDaysGo := time.Now().AddDate(-30, 0, 0).Unix()
 
 	params := &stripe.ChargeListParams{
 		TransferGroup: stripe.String(podSelector),
