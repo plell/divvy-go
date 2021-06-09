@@ -19,6 +19,7 @@ import (
 	"github.com/stripe/stripe-go/v72/charge"
 	"github.com/stripe/stripe-go/v72/checkout/session"
 	"github.com/stripe/stripe-go/v72/customer"
+	"github.com/stripe/stripe-go/v72/paymentintent"
 
 	customersession "github.com/stripe/stripe-go/v72/billingportal/session"
 	"github.com/stripe/stripe-go/v72/payout"
@@ -485,6 +486,17 @@ func UpdateCheckoutSessionByCustomer(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "This sale is expired")
 	}
 
+	pi, err := paymentintent.Get(
+		ogSession.PaymentIntent.ID,
+		nil,
+	)
+
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "Cannot get session")
+	}
+
+	ogMetadata := pi.Metadata
+
 	// add user selector to metadata for metadata
 	user := User{}
 	result := DB.Preload("Customer").First(&user, user_id)
@@ -495,39 +507,33 @@ func UpdateCheckoutSessionByCustomer(c echo.Context) error {
 	// get customer from user
 	jamcustomer := user.Customer
 
-	// get customer from stripe
-	cstmr, err := customer.Get(jamcustomer.StripeCustomerAccountID, nil)
-	if err != nil {
-		return AbstractError(c, "Couldn't get customer!")
-	}
-
 	var metaDataPack map[string]string
 
 	metaDataPack = make(map[string]string)
 	transferGroup := ""
 
-	if _, ok := cstmr.Metadata["userSelector"]; ok {
-		metaDataPack["userSelector"] = cstmr.Metadata["userSelector"]
+	if _, ok := ogMetadata["userSelector"]; ok {
+		metaDataPack["userSelector"] = ogMetadata["userSelector"]
 	}
-	if _, ok := cstmr.Metadata["podSelector"]; ok {
-		metaDataPack["podSelector"] = cstmr.Metadata["podSelector"]
-		transferGroup = cstmr.Metadata["podSelector"]
+	if _, ok := ogMetadata["podSelector"]; ok {
+		metaDataPack["podSelector"] = ogMetadata["podSelector"]
+		transferGroup = ogMetadata["podSelector"]
 	}
-	if _, ok := cstmr.Metadata["collaboratorSelector"]; ok {
-		metaDataPack["collaboratorSelector"] = cstmr.Metadata["collaboratorSelector"]
+	if _, ok := ogMetadata["collaboratorSelector"]; ok {
+		metaDataPack["collaboratorSelector"] = ogMetadata["collaboratorSelector"]
 	}
-	if _, ok := cstmr.Metadata["stripeFees"]; ok {
-		metaDataPack["stripeFees"] = cstmr.Metadata["stripeFees"]
+	if _, ok := ogMetadata["stripeFees"]; ok {
+		metaDataPack["stripeFees"] = ogMetadata["stripeFees"]
 	}
-	if _, ok := cstmr.Metadata["jamFees"]; ok {
-		metaDataPack["jamFees"] = cstmr.Metadata["jamFees"]
+	if _, ok := ogMetadata["jamFees"]; ok {
+		metaDataPack["jamFees"] = ogMetadata["jamFees"]
 	}
-	if _, ok := cstmr.Metadata["amountAfterFees"]; ok {
-		metaDataPack["amountAfterFees"] = cstmr.Metadata["amountAfterFees"]
+	if _, ok := ogMetadata["amountAfterFees"]; ok {
+		metaDataPack["amountAfterFees"] = ogMetadata["amountAfterFees"]
 	}
 
 	params := &stripe.CheckoutSessionParams{
-		Customer: stripe.String(cstmr.ID),
+		Customer: stripe.String(jamcustomer.StripeCustomerAccountID),
 		PaymentIntentData: &stripe.CheckoutSessionPaymentIntentDataParams{
 			TransferGroup: stripe.String(transferGroup),
 			Metadata:      metaDataPack,
@@ -543,7 +549,7 @@ func UpdateCheckoutSessionByCustomer(c echo.Context) error {
 					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
 						Name: stripe.String("Sale"),
 					},
-					UnitAmount: stripe.Int64(ogSession.PaymentIntent.Amount),
+					UnitAmount: stripe.Int64(pi.Amount),
 				},
 				Quantity: stripe.Int64(1),
 			},
@@ -1073,6 +1079,9 @@ func CreateRefund(txnId string, collaborators []Collaborator) {
 		return
 	}
 
+	dbCharge := Charge{}
+	DB.Where("charge_id = ?", ch.ID).First(&dbCharge)
+	DB.Delete(&dbCharge)
 }
 
 type ChargeList struct {
@@ -1560,10 +1569,19 @@ func handleSuccessfulCharge(ch stripe.Charge) {
 	log.Println("handleSuccessfulCharge")
 	amount := ch.Amount
 	userSelector := ""
+	podSelector := ""
+	amountAfterFees := ""
+
 	if _, ok := ch.Metadata["userSelector"]; ok {
 		userSelector = ch.Metadata["userSelector"]
-	} else {
-		log.Println("no meta!")
+	}
+
+	if _, ok := ch.Metadata["podSelector"]; ok {
+		podSelector = ch.Metadata["podSelector"]
+	}
+
+	if _, ok := ch.Metadata["amountAfterFees"]; ok {
+		amountAfterFees = ch.Metadata["amountAfterFees"]
 	}
 
 	WebsocketWriter(&SocketMessage{
@@ -1571,6 +1589,18 @@ func handleSuccessfulCharge(ch stripe.Charge) {
 		PaymentIntentID: ch.PaymentIntent.ID,
 		UserSelector:    userSelector,
 	})
+
+	aaf, _ := strconv.Atoi(amountAfterFees)
+
+	newcharge := Charge{
+		ChargeID:        ch.ID,
+		Amount:          int64(amount),
+		AmountAfterFees: int64(aaf),
+		UserSelector:    userSelector,
+		PodSelector:     podSelector,
+	}
+
+	DB.Create(&newcharge)
 
 	SendPaymentReceivedEmail(ch)
 }

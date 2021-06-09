@@ -116,7 +116,6 @@ func Login(c echo.Context) error {
 	log.Println("passed verification email")
 
 	return c.JSON(http.StatusOK, response)
-
 }
 
 func CustomerLogin(c echo.Context) error {
@@ -173,19 +172,6 @@ func CustomerLogin(c echo.Context) error {
 		User:  formatUser}
 
 	MakeLoginHistory(creds.Username, ip, true)
-
-	log.Println("has customer?")
-	log.Println("send verification email")
-	// login is correct! check if account is verified
-
-	// if this user has no customer associated, make them a customer record
-	if user.Customer.UserID == 0 {
-		err := CreateCustomerAfterUserLogin(c, user.ID)
-
-		if err != nil {
-			return AbstractError(c, "Couldn't create customer")
-		}
-	}
 
 	return c.JSON(http.StatusOK, response)
 

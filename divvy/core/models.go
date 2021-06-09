@@ -71,6 +71,18 @@ type StripeAccountAPI struct {
 	Verified string `json:"verified"`
 }
 
+var CHARGE_TABLE = "charges"
+
+type Charge struct {
+	ChargeID        string `json:"chargeId"`
+	Amount          int64  `json:"amount"`
+	AmountAfterFees int64  `json:"amountAfterFees"`
+	UserSelector    string `json:"userSelector"`
+	PodSelector     string `json:"podSelector"`
+	gorm.Model
+	ByTheBy
+}
+
 var USER_TRANSFER_TABLE = "user_transfers"
 
 type UserTransfer struct {

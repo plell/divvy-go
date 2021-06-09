@@ -105,7 +105,6 @@ func IsPodMember(next echo.HandlerFunc) echo.HandlerFunc {
 		user_id := claims.UserID
 
 		podSelector := c.Param("podSelector")
-		log.Println(podSelector)
 
 		pod := Pod{}
 		result := DB.Where("selector = ?", podSelector).First(&pod)
@@ -118,8 +117,6 @@ func IsPodMember(next echo.HandlerFunc) echo.HandlerFunc {
 		if result.Error != nil {
 			return c.String(http.StatusInternalServerError, "You're not a member of this wallet")
 		}
-
-		log.Println("yes is pod member!")
 
 		return next(c)
 	}

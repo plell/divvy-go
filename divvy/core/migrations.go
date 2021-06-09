@@ -24,6 +24,7 @@ func MigrateUp() {
 		&BetaKey{},
 		&EmailVerificationCode{},
 		&UserTransfer{},
+		&Charge{},
 		&Customer{},
 		&Chargeback{},
 		&Refund{},
