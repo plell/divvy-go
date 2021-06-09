@@ -57,6 +57,8 @@ func MakeRoutes(e *echo.Echo) {
 	r.POST("/verify/:verificationCode", VerifyAccountEmail)
 	r.POST("/sendVerification", SendVerificationEmail)
 	r.POST("/user/transfers/:userSelector", GetUserTransfers)
+	r.POST("/user/transferlist/:userSelector", GetUserTransferList)
+
 	r.POST("/pod/join", JoinPod)
 
 	r.GET("/stripe/customerAccount", GetStripeCustomerAccount)

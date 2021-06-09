@@ -39,6 +39,7 @@ type AvatarResponse struct {
 	Avatar []uint `json:"avatar"`
 }
 
+// we create a user record and a customer record for all records, so that they can use both jamwallet.app and jamwallet.store to earn and pay
 func CreateUser(c echo.Context) error {
 	req := UserCreator{}
 	defer c.Request().Body.Close()
@@ -86,6 +87,13 @@ func CreateUser(c echo.Context) error {
 
 	if result.Error != nil {
 		return AbstractError(c, "Couldn't create avatar")
+	}
+
+	// create customer for all users, because they may create customer accounts later on
+	err = CreateCustomerAfterUserLogin(c, user.ID)
+
+	if err != nil {
+		return AbstractError(c, "Couldn't create customer")
 	}
 
 	emailVerificationCode := EmailVerificationCode{
@@ -152,6 +160,32 @@ func GetUserTransfers(c echo.Context) error {
 	lastday := firstday.AddDate(0, 1, 0).Add(time.Nanosecond * -1)
 
 	result := DB.Where("user_selector = ?", userSelector).Where("created_at BETWEEN ? AND ?", firstday, lastday).Find(&userTransfers)
+	if result.Error != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	return c.JSON(http.StatusOK, userTransfers)
+}
+
+func GetUserTransferList(c echo.Context) error {
+	userSelector := c.Param("userSelector")
+	req := PodTransferRequest{}
+	defer c.Request().Body.Close()
+	err := json.NewDecoder(c.Request().Body).Decode(&req)
+	if err != nil {
+		return AbstractError(c, "Couldn't read request")
+	}
+
+	userTransfers := []UserTransfer{}
+
+	// SubMonths here to get requested month
+	negativeMonths := req.SubMonths * -1
+	t := time.Now().AddDate(0, negativeMonths, 0)
+
+	firstday := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.Local)
+	lastday := firstday.AddDate(0, 1, 0).Add(time.Nanosecond * -1)
+
+	result := DB.Preload("Pod").Where("user_selector = ?", userSelector).Where("created_at BETWEEN ? AND ?", firstday, lastday).Find(&userTransfers)
 	if result.Error != nil {
 		return AbstractError(c, "Something went wrong")
 	}

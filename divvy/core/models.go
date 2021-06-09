@@ -84,8 +84,23 @@ type UserTransfer struct {
 	UserSelector         string `json:"userSelector"`
 	CollaboratorSelector string `json:"collaboratorSelector"`
 	PodSelector          string `json:"podSelector"`
+	Pod                  Pod
+	PodID                uint `json:"podId"`
 	gorm.Model
 	ByTheBy
+}
+
+type UserTransferAPI struct {
+	// ChargeID             string `json:"chargeId"`
+	TransferID     string `json:"transferId"`
+	JamFees        int64  `json:"jamFees"`
+	StripeFees     int64  `json:"stripeFees"`
+	Amount         int64  `json:"amount"`
+	TransferAmount int64  `json:"transferAmount"`
+	PodSelector    string `json:"podSelector"`
+	Pod            Pod
+	PodID          uint   `json:"podId"`
+	CreatedAt      string `json:"createdAt"`
 }
 
 var AVATAR_TABLE = "avatars"
