@@ -58,7 +58,7 @@ func main() {
 
 	go core.RunWebsocketBroker()
 
-	fmt.Println("start 8000 server!")
+	fmt.Println("start 443 server!")
 	// Start server
-	e.Logger.Fatal(e.Start(":8000"))
+	e.Logger.Fatal(e.Start(":443"))
 }
