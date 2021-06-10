@@ -48,7 +48,7 @@ func main() {
 	core.MigrateUp()
 
 	c := cron.New()
-	c.AddFunc("@every 1m", func() {
+	c.AddFunc("@every 24h", func() {
 		core.DoChargeTransfersAndRefundsCron()
 		core.DoFeeTransferToJamWalletCron()
 		core.DoPodDeletionCron()
