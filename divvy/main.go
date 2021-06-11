@@ -12,7 +12,6 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	core "github.com/plell/divvygo/divvy/core"
 	"github.com/robfig/cron/v3"
-	"golang.org/x/crypto/acme/autocert"
 	// "gorm.io/driver/mysql"
 	// "gorm.io/gorm"
 )
@@ -29,7 +28,7 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	e.AutoTLSManager.Cache = autocert.DirCache("/var/www/.cache")
+	// e.AutoTLSManager.Cache = autocert.DirCache("/var/www/.cache")
 
 	// Middleware
 	e.Use(middleware.Logger())
@@ -63,10 +62,10 @@ func main() {
 	go core.RunWebsocketBroker()
 
 	// Start server
-	// fmt.Println("start http 443 server!")
-	// e.Logger.Fatal(e.Start(":443"))
+	fmt.Println("start http 443 server!")
+	e.Logger.Fatal(e.Start(":443"))
 
-	fmt.Println("start tls 443 server!")
-	e.Logger.Fatal(e.StartAutoTLS(":443"))
+	// fmt.Println("start tls 443 server!")
+	// e.Logger.Fatal(e.StartAutoTLS(":443"))
 
 }
