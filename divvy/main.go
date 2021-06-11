@@ -45,6 +45,7 @@ func main() {
 
 	// Make Routes
 	core.MakeRoutes(e)
+
 	// DB connect
 	core.ConnectDB()
 	// DB Automigrate

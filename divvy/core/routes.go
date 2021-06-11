@@ -1,6 +1,8 @@
 package core
 
 import (
+	"net/http"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -8,6 +10,14 @@ import (
 // var SocketServer *socketio.Server
 
 func MakeRoutes(e *echo.Echo) {
+
+	e.GET("/", func(c echo.Context) error {
+		return c.HTML(http.StatusOK, `
+			<h1>Welcome to Echo!</h1>
+			<h3>TLS certificates automatically installed from Let's Encrypt :)</h3>
+		`)
+	})
+
 	// stripe webhook listener
 	e.Any("/webhook", echo.HandlerFunc(HandleStripeWebhook))
 
