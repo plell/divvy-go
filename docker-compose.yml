@@ -32,5 +32,5 @@ services:
         - "traefik.http.routers.whoami.tls.certresolver=myresolver"
     divvy-go:
         build: . #build with dockerfile
-        ports:
-        - "443:443"
+        # ports:
+        # - "443:443"
