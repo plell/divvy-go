@@ -50,6 +50,10 @@ func CreateUser(c echo.Context) error {
 		return AbstractError(c, "Couldn't read request")
 	}
 
+	if req.BetaKey == "" {
+		return AbstractError(c, "Sorry")
+	}
+
 	hashedPassword := HashAndSalt(req.Password)
 
 	user := User{

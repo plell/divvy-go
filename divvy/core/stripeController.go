@@ -316,8 +316,8 @@ func LinkStripeAccount(c echo.Context) error {
 
 	linkParams := &stripe.AccountLinkParams{
 		Account:    stripe.String(accountId),
-		RefreshURL: stripe.String("https://example.com/reauth"),
-		ReturnURL:  stripe.String("https://example.com/return"),
+		RefreshURL: stripe.String("https://jamwallet.app/a/me"),
+		ReturnURL:  stripe.String("https://jamwallet.app/a/me"),
 		Type:       stripe.String("account_onboarding"),
 	}
 
