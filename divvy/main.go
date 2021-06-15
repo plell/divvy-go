@@ -28,6 +28,7 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
+	e.AutoTLSManager.HostPolicy = autocert.HostWhitelist("api.jamwallet.app")
 	e.AutoTLSManager.Cache = autocert.DirCache("/var/www/.cache")
 
 	// Middleware
