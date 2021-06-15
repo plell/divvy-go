@@ -14,6 +14,7 @@ require (
 	github.com/labstack/echo v3.3.10+incompatible // indirect
 	github.com/labstack/echo/v4 v4.2.1 // indirect
 	github.com/leekchan/accounting v1.0.0 // indirect
+	github.com/logdna/logdna-go v1.0.2 // indirect
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/robfig/cron/v3 v3.0.0 // indirect
 	github.com/sendgrid/rest v2.6.3+incompatible // indirect
