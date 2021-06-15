@@ -23,23 +23,17 @@ func main() {
 
 	// Load .env
 	err := godotenv.Load()
-
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
-	e.AutoTLSManager.HostPolicy = autocert.HostWhitelist("api.jamwallet.app")
+	// e.AutoTLSManager.HostPolicy = autocert.HostWhitelist("api.jamwallet.app")
 	e.AutoTLSManager.Cache = autocert.DirCache("/var/www/.cache")
 
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
-
-	// e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-	// 	AllowOrigins: []string{"http://localhost:3000"},
-	// 	AllowHeaders: []string{"Authorization", "Content-Type", "Accept", "User-Agent", "Referer", "Connection", "Upgrade"},
-	// }))
 
 	e.IPExtractor = echo.ExtractIPFromXFFHeader()
 
