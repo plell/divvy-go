@@ -26,8 +26,6 @@ func MakeRoutes(e *echo.Echo) {
 	e.POST("/customerLogin", CustomerLogin)
 	e.POST("/login", Login)
 	e.POST("/logout", Logout)
-	// for donation
-	// e.POST("/stripe/checkoutSession", CreateCheckoutSession)
 	e.POST("/recover/:username", SendPasswordReset)
 	e.POST("/recover/submit", ChangePassword)
 

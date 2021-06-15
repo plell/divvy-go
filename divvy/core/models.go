@@ -86,18 +86,19 @@ type Charge struct {
 var USER_TRANSFER_TABLE = "user_transfers"
 
 type UserTransfer struct {
-	ChargeID             string `json:"chargeId"`
-	TransferID           string `json:"transferId"`
-	JamFees              int64  `json:"jamFees"`
-	StripeFees           int64  `json:"stripeFees"`
-	Amount               int64  `json:"amount"`
-	AmountAfterFees      int64  `json:"amountAfterFees"`
-	TransferAmount       int64  `json:"transferAmount"`
-	UserSelector         string `json:"userSelector"`
-	CollaboratorSelector string `json:"collaboratorSelector"`
-	PodSelector          string `json:"podSelector"`
-	Pod                  Pod
-	PodID                uint `json:"podId"`
+	ChargeID             string  `json:"chargeId"`
+	TransferID           string  `json:"transferId"`
+	JamFees              int64   `json:"jamFees"`
+	StripeFees           int64   `json:"stripeFees"`
+	Amount               int64   `json:"amount"`
+	AmountAfterFees      int64   `json:"amountAfterFees"`
+	TransferAmount       int64   `json:"transferAmount"`
+	TransferPercentage   float64 `json:"transferPercentage"`
+	UserSelector         string  `json:"userSelector"`
+	CollaboratorSelector string  `json:"collaboratorSelector"`
+	PodSelector          string  `json:"podSelector"`
+	Pod                  Pod     `json:"pod"`
+	PodID                uint    `json:"podId"`
 	gorm.Model
 	ByTheBy
 }
@@ -153,26 +154,24 @@ type AvatarAPI struct {
 var COLLABORATOR_TABLE = "collaborators"
 
 type Collaborator struct {
-	User         User    //`gorm:"PRELOAD:true"`
-	UserID       uint    `json:"userId"`
-	PodID        uint    `json:"podId"`
-	Selector     string  `json:"selector"`
-	Distribution float64 `json:"distribution"`
-	RoleType     RoleType
-	RoleTypeID   uint `json:"roleTypeId"`
+	User       User   //`gorm:"PRELOAD:true"`
+	UserID     uint   `json:"userId"`
+	PodID      uint   `json:"podId"`
+	Selector   string `json:"selector"`
+	RoleType   RoleType
+	RoleTypeID uint `json:"roleTypeId"`
 	gorm.Model
 	ByTheBy
 }
 type CollaboratorAPI struct {
-	IsAdmin          bool    `json:"isAdmin"`
-	Selector         string  `json:"selector"`
-	UserSelector     string  `json:"userSelector"`
-	DisplayName      string  `json:"displayName"`
-	Username         string  `json:"username"`
-	Distribution     float64 `json:"distribution"`
-	HasStripeAccount bool    `json:"hasStripeAccount"`
-	City             string  `json:"city"`
-	Avatar           []uint  `json:"avatar"`
+	IsAdmin          bool   `json:"isAdmin"`
+	Selector         string `json:"selector"`
+	UserSelector     string `json:"userSelector"`
+	DisplayName      string `json:"displayName"`
+	Username         string `json:"username"`
+	HasStripeAccount bool   `json:"hasStripeAccount"`
+	City             string `json:"city"`
+	Avatar           []uint `json:"avatar"`
 	RoleType         RoleType
 	RoleTypeID       uint `json:"roleTypeId"`
 }

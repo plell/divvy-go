@@ -10,9 +10,9 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+
 	core "github.com/plell/divvygo/divvy/core"
 	"github.com/robfig/cron/v3"
-	"golang.org/x/crypto/acme/autocert"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	e.AutoTLSManager.Cache = autocert.DirCache("/var/www/.cache")
+	// e.AutoTLSManager.Cache = autocert.DirCache("/var/www/.cache")
 
 	// Middleware
 	e.Use(middleware.Logger())
@@ -59,12 +59,13 @@ func main() {
 	c.Start()
 
 	go core.RunWebsocketBroker()
+	core.StartDNALogger()
 
 	// Start server
-	// fmt.Println("start http 443 server!")
-	// e.Logger.Fatal(e.Start(":443"))
+	fmt.Println("start http 8000 server!")
+	e.Logger.Fatal(e.Start(":8000"))
 
-	fmt.Println("start tls 443 server!")
-	e.Logger.Fatal(e.StartAutoTLS(":443"))
+	// fmt.Println("start tls 443 server!")
+	// e.Logger.Fatal(e.StartAutoTLS(":443"))
 
 }

@@ -587,22 +587,16 @@ func getAdminAndNonadminCounts(collaborators []Collaborator) (int64, int64) {
 	adminCount := int64(len(admins))
 	nonadminCount := int64(len(nonadmins))
 
-	log.Println("adminCount")
-	log.Println(adminCount)
-	log.Println("nonadminCount")
-	log.Println(nonadminCount)
-
 	return adminCount, nonadminCount
 }
 
-func getCollaboratorTransferAmount(amountAfterFees int64, collaboratorLength int64) int64 {
+func getCollaboratorTransferAmount(amountAfterFees int64, collaboratorLength int64) (int64, float64) {
 	transferAmount := amountAfterFees / collaboratorLength
-	log.Println("transferAmount per collaborator")
-	log.Println(transferAmount)
-	return transferAmount
+	percentage := 100 / float64(collaboratorLength)
+	return transferAmount, percentage
 }
 
-func getCollaboratorTransferAmountTilted(collaborator Collaborator, amountAfterFees int64, adminCount int64, nonadminCount int64, payoutTypeId uint) int64 {
+func getCollaboratorTransferAmountTilted(collaborator Collaborator, amountAfterFees int64, adminCount int64, nonadminCount int64, payoutTypeId uint) (int64, float64) {
 
 	adminClaims := 0.25 // 25%
 	if payoutTypeId == POD_PAYOUT_ADMIN50 {
@@ -624,6 +618,8 @@ func getCollaboratorTransferAmountTilted(collaborator Collaborator, amountAfterF
 	nonadminAmountAfterFees := amountAfterFees - adminAmountAfterFees
 
 	transferAmount := int64(0)
+	transferPercentage := float64(0)
+
 	if collaborator.RoleTypeID == ROLE_TYPE_ADMIN {
 		// is admin
 		transferAmount = adminAmountAfterFees / adminCount
@@ -635,7 +631,9 @@ func getCollaboratorTransferAmountTilted(collaborator Collaborator, amountAfterF
 		log.Println(transferAmount)
 	}
 
-	return transferAmount
+	transferPercentage = (float64(transferAmount) / float64(amountAfterFees)) * 100
+
+	return transferAmount, transferPercentage
 }
 
 type PodPayout struct {
@@ -722,11 +720,13 @@ func DoChargeTransfersAndRefundsCron() {
 		// get charges for pod
 
 		// 30 days
-		createdSinceDaysGo := time.Now().AddDate(-30, 0, 0).Unix()
+		createdSinceDaysGo := time.Now().AddDate(0, 0, -30).Unix()
+		twentyFourHrsAgo := time.Now().AddDate(0, 0, -1).Unix()
 		params := &stripe.ChargeListParams{
 			TransferGroup: stripe.String(pod.Selector),
 			CreatedRange: &stripe.RangeQueryParams{
 				GreaterThan: createdSinceDaysGo,
+				LesserThan:  twentyFourHrsAgo,
 			},
 		}
 
@@ -767,6 +767,11 @@ func DoChargeTransfersAndRefundsCron() {
 				continue
 			}
 
+			// from this point down, the charge:
+			// -HAS NOT BEEN REFUNDED
+			// -IS NOT SCHEDULED FOR REFUND
+			// -HAS NOT BEEN TRANSFERRED ALREADY
+
 			chargeParams := &stripe.ChargeParams{}
 			amountAfterFees := int64(0)
 			stripeFees := int64(0)
@@ -775,7 +780,6 @@ func DoChargeTransfersAndRefundsCron() {
 			if _, ok := c.Metadata["jamFees"]; ok {
 				aaf, err := strconv.Atoi(c.Metadata["jamFees"])
 				if err == nil {
-					log.Println("got amount after fees from metadata!")
 					jamFees = int64(aaf)
 				}
 			}
@@ -783,7 +787,6 @@ func DoChargeTransfersAndRefundsCron() {
 			if _, ok := c.Metadata["stripeFees"]; ok {
 				aaf, err := strconv.Atoi(c.Metadata["stripeFees"])
 				if err == nil {
-					log.Println("got amount after fees from metadata!")
 					stripeFees = int64(aaf)
 				}
 			}
@@ -791,7 +794,6 @@ func DoChargeTransfersAndRefundsCron() {
 			if _, ok := c.Metadata["amountAfterFees"]; ok {
 				aaf, err := strconv.Atoi(c.Metadata["amountAfterFees"])
 				if err == nil {
-					log.Println("got amount after fees from metadata!")
 					amountAfterFees = int64(aaf)
 				}
 			}
@@ -803,10 +805,8 @@ func DoChargeTransfersAndRefundsCron() {
 
 			// check that account balance is more than amountAfterFees
 			if amountAfterFees > availableBalance {
-				log.Println("*******************************")
-				log.Println("availableBalance")
-				log.Println(availableBalance)
 				log.Println("amountAfterFees is greater than availableBalance, wait to transfer")
+				log.Println(availableBalance)
 				log.Println(amountAfterFees)
 				continue
 			}
@@ -817,20 +817,17 @@ func DoChargeTransfersAndRefundsCron() {
 			for c_i, collaborator := range collaborators {
 
 				// look at pod payout setting and split up payment!
-
 				collaboratorTransferAmount := int64(0)
-				// collaboratorBeforeFeeAmountReference := int64(0)
+				collaboratorTransferPercentage := float64(0)
 
 				if pod.PayoutTypeId == POD_PAYOUT_EVEN_SPLIT {
 					//even split
 					log.Println("POD PAYOUT IS EVEN SPLIT")
-					collaboratorTransferAmount = getCollaboratorTransferAmount(amountAfterFees, collaboratorLength)
-					// collaboratorBeforeFeeAmountReference = getCollaboratorTransferAmount(c.Amount, collaboratorLength)
+					collaboratorTransferAmount, collaboratorTransferPercentage = getCollaboratorTransferAmount(amountAfterFees, collaboratorLength)
 				} else {
 					// tilted split
 					log.Println("POD PAYOUT IS NOT EVEN SPLIT")
-					collaboratorTransferAmount = getCollaboratorTransferAmountTilted(collaborator, amountAfterFees, adminCount, nonadminCount, pod.PayoutTypeId)
-					// collaboratorBeforeFeeAmountReference = getCollaboratorTransferAmountTilted(collaborator, c.Amount, adminCount, nonadminCount, pod.PayoutTypeId)
+					collaboratorTransferAmount, collaboratorTransferPercentage = getCollaboratorTransferAmountTilted(collaborator, amountAfterFees, adminCount, nonadminCount, pod.PayoutTypeId)
 				}
 
 				userSelector := collaborator.User.Selector
@@ -878,6 +875,7 @@ func DoChargeTransfersAndRefundsCron() {
 					Amount:               c.Amount,
 					AmountAfterFees:      amountAfterFees,
 					TransferAmount:       collaboratorTransferAmount,
+					TransferPercentage:   collaboratorTransferPercentage,
 					UserSelector:         userSelector,
 					CollaboratorSelector: collaboratorSelector,
 					PodSelector:          pod.Selector,
@@ -949,6 +947,7 @@ func DoChargeTransfersAndRefundsCron() {
 				chargeParams.AddMetadata(metadataKey, tr.ID)
 
 				if c_i == (len(collaborators) - 1) {
+					// FIXME check that each collaborator's selector exists as metadata on charge
 					t := time.Now().String()
 					chargeParams.AddMetadata("transfers_complete", t)
 					log.Println("set transfers_complete")
@@ -1007,7 +1006,7 @@ func DoFeeTransferToJamWalletCron() {
 	log.Println("availableBalance")
 	log.Println(availableBalance)
 
-	createdSinceDaysGo := time.Now().AddDate(-30, 0, 0).Unix()
+	createdSinceDaysGo := time.Now().AddDate(0, 0, -30).Unix()
 	params := &stripe.ChargeListParams{
 		CreatedRange: &stripe.RangeQueryParams{
 			GreaterThan: createdSinceDaysGo,
@@ -1078,7 +1077,6 @@ func DoFeeTransferToJamWalletCron() {
 			tr, err := transfer.New(transferParams)
 
 			if err != nil {
-				log.Println("transfer failed!")
 				log.Println("transfer failed!")
 				continue
 			}
@@ -1319,7 +1317,7 @@ func GetPodUnavailableChargeList(c echo.Context) error {
 	stripe.Key = getStripeKey()
 
 	// 30 days
-	createdSinceDaysGo := time.Now().AddDate(-30, 0, 0).Unix()
+	createdSinceDaysGo := time.Now().AddDate(0, 0, -30).Unix()
 
 	params := &stripe.ChargeListParams{
 		TransferGroup: stripe.String(podSelector),
@@ -1366,7 +1364,7 @@ func Direct_GetPodUnavailableCharges(podSelector string) []ChargeListItem {
 	stripe.Key = getStripeKey()
 
 	// 30 days
-	createdSinceDaysGo := time.Now().AddDate(-30, 0, 0).Unix()
+	createdSinceDaysGo := time.Now().AddDate(0, 0, -30).Unix()
 
 	params := &stripe.ChargeListParams{
 		TransferGroup: stripe.String(podSelector),
@@ -1464,6 +1462,12 @@ func ScheduleRefund(c echo.Context) error {
 	)
 	if err != nil {
 		return AbstractError(c, "Something went wrong")
+	}
+
+	// is less than 30 days old
+	thirtyDaysAgo := time.Now().AddDate(0, 0, -30).Unix()
+	if ch.Created < thirtyDaysAgo {
+		return AbstractError(c, "This charge is too old to refund. Please contact support for help.")
 	}
 
 	errMessage := doChargePermissions(ch, c)

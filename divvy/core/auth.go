@@ -115,6 +115,8 @@ func Login(c echo.Context) error {
 	}
 	log.Println("passed verification email")
 
+	LogInfo("Login!")
+
 	return c.JSON(http.StatusOK, response)
 }
 
@@ -135,6 +137,15 @@ func CustomerLogin(c echo.Context) error {
 
 	// Check in your db if the user exists or not
 	result := DB.Preload("Avatar").Preload("Customer").Where("username = ?", creds.Username).First(&user)
+
+	// if no customer
+	if user.Customer.ID == 0 {
+		// create customer if none exists
+		err = CreateCustomerAfterUserLogin(c, user.ID)
+		if err != nil {
+			return AbstractError(c, "Couldn't create customer")
+		}
+	}
 
 	if result.Error != nil {
 		MakeLoginHistory(creds.Username, ip, false)

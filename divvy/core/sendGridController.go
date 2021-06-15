@@ -111,6 +111,10 @@ func SendInvite(c echo.Context) error {
 	return c.String(http.StatusOK, "Success!")
 }
 
+type PasswordResetRequest struct {
+	Path string `json:"path"`
+}
+
 func SendPasswordReset(c echo.Context) error {
 	username := c.Param("username")
 	user := User{}
@@ -118,6 +122,15 @@ func SendPasswordReset(c echo.Context) error {
 	if result.Error != nil {
 		return AbstractError(c, "")
 	}
+
+	req := PasswordResetRequest{}
+	defer c.Request().Body.Close()
+	err := json.NewDecoder(c.Request().Body).Decode(&req)
+
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
 	code := MakeInviteCode()
 	user.PasswordResetToken = code
 	result = DB.Save(&user)
@@ -128,8 +141,8 @@ func SendPasswordReset(c echo.Context) error {
 	dd := []DynamicData{}
 
 	dd = append(dd, DynamicData{
-		Key:   "resetCode",
-		Value: code,
+		Key:   "url",
+		Value: req.Path + "/recover/" + code,
 	})
 
 	emails := []string{username}

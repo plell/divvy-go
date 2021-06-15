@@ -464,7 +464,7 @@ func DoPodDeletionCron() {
 
 	for i, pod := range pods {
 
-		// fiveDaysAgo := time.Now().AddDate(-5, 0, 0).Unix()
+		// fiveDaysAgo := time.Now().AddDate(0, 0, -5).Unix()
 		// layout := "2021-05-13 16:43:45.670736 -0700 PDT m=+761.179192342"
 		// t, err := time.Parse(layout, pod.ToDelete)
 
