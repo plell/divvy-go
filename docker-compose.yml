@@ -26,4 +26,4 @@ services:
             - 'traefik.http.routers.divvy-go.rule=Host(`api4.jamwallet.app`)'
             - 'traefik.http.routers.divvy-go.tls=true'
             - 'traefik.http.routers.divvy-go.tls.certresolver=lets-encrypt'
-            - "traefik.http.routers.divvy-go.entrypoints=web"
+            # - "traefik.http.routers.divvy-go.entrypoints=web"
