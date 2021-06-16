@@ -10,7 +10,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"golang.org/x/crypto/acme/autocert"
 
 	core "github.com/plell/divvygo/divvy/core"
 	"github.com/robfig/cron/v3"
@@ -28,7 +27,7 @@ func main() {
 	}
 
 	// e.AutoTLSManager.HostPolicy = autocert.HostWhitelist("api.jamwallet.app")
-	e.AutoTLSManager.Cache = autocert.DirCache("/var/www/.cache")
+	// e.AutoTLSManager.Cache = autocert.DirCache("/var/www/.cache")
 
 	// Middleware
 	e.Use(middleware.Logger())
@@ -59,9 +58,9 @@ func main() {
 
 	// Start server
 	// fmt.Println("start http 8000 server!")
-	// e.Logger.Fatal(e.Start(":8000"))
+	e.Logger.Fatal(e.Start(":443"))
 
-	fmt.Println("start tls 443 server!")
-	e.Logger.Fatal(e.StartAutoTLS(":443"))
+	// fmt.Println("start tls 443 server!")
+	// e.Logger.Fatal(e.StartAutoTLS(":443"))
 
 }
