@@ -1,37 +1,24 @@
 version: "3.3"  # optional since v1.27.0
 services:
-    # traefik:
-    #     image: "traefik:v2.4"
-    #     container_name: "traefik"
-    #     command:
-    #     - "--log.level=DEBUG"
-    #     - "--api.insecure=true"
-    #     - "--providers.docker=true"
-    #     - "--providers.docker.exposedbydefault=false"
-    #     - "--entrypoints.web.address=:80"
-    #     - "--entrypoints.websecure.address=:443"
-    #     - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
-    #     - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
-    #     - "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
-    #     - "--certificatesresolvers.myresolver.acme.email=plelldavid@gmail.com"
-    #     - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-    #     ports:
-    #     - "80:80"
-    #     - "443:443"
-    #     - "8080:8080"
-    #     volumes:
-    #     - "./letsencrypt:/letsencrypt"
-    #     - "/var/run/docker.sock:/var/run/docker.sock:ro"
-    divvy-go:
-        image: "divvy-go"
-        container_name: "divvy"
-        build: . #build with dockerfile
+    traefik:
+        image: traefik:2.1
+        restart: always
         ports:
-        - "80:80"
-        - "443:443"
-        - "8080:8080"
-        # labels:
-        # - "traefik.enable=true"
-        # - "traefik.http.routers.whoami.rule=Host(`api.jamwallet.app`)"
-        # - "traefik.http.routers.whoami.entrypoints=websecure"
-        # - "traefik.http.routers.whoami.tls.certresolver=myresolver"
+            - '80:80'
+            - '443:443'
+        volumes:
+            - ./traefik:/etc/traefik
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+    divvy-go:
+        image: "divvy-go:latest"
+        # container_name: "divvy"
+        # build: . #build with dockerfile
+        ports:
+            - "80:80"
+            - "443:443"
+            - "8080:8080"
+        labels:
+            - 'traefik.enable=true'
+            - 'traefik.http.routers.divvy-go.rule=Host(`api.jamwallet.app`)'
+            - 'traefik.http.routers.divvy-go.tls=true'
+            - 'traefik.http.routers.divvy-go.tls.certresolver=lets-encrypt'
