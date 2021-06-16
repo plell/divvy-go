@@ -13,10 +13,10 @@ services:
         image: "divvy-go:latest"
         # container_name: "divvy"
         # build: . #build with dockerfile
-        ports:
-            - "80:80"
-            - "443:443"
-            - "8080:8080"
+        # ports:
+        #     - "80:80"
+        #     - "443:443"
+        #     - "8080:8080"
         labels:
             - 'traefik.enable=true'
             - 'traefik.http.routers.divvy-go.rule=Host(`api.jamwallet.app`)'
