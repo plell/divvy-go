@@ -17,6 +17,16 @@ type Credentials struct {
 	Password string `json:"password"`
 }
 
+type GoogleCredentials struct {
+	Email       string `json:"email"`
+	GoogleID    string `json:"googleId"`
+	AccessToken string `json:"accessToken"`
+	TokenID     string `json:"tokenId"`
+	City        string `json:"city"`
+	Name        string `json:"name"`
+	ImageURL    string `json:"imageUrl"`
+}
+
 type LoginResponse struct {
 	Token string  `json:"token"`
 	User  UserAPI `json:"user"`
@@ -48,10 +58,14 @@ func MakeLoginHistory(username string, ip string, success bool) {
 	}
 
 	DB.Create(&lh)
+	outcome := "failed"
+	if success {
+		outcome = "succeeded"
+	}
+	LogInfo("Login " + outcome + " from " + ip)
 }
 
-// Most of the code is taken from the echo guide
-// https://echo.labstack.com/cookbook/jwt
+// This is a basic login, not a google login
 func Login(c echo.Context) error {
 	mySigningKey := GetSigningKey()
 	ip := c.RealIP()
@@ -107,15 +121,92 @@ func Login(c echo.Context) error {
 
 	MakeLoginHistory(creds.Username, ip, true)
 
-	log.Println("send verification email")
 	// login is correct! check if account is verified
 	if user.Verified == "" {
 		// if not, send verification email
 		Direct_SendVerificationEmail(user)
 	}
-	log.Println("passed verification email")
 
-	LogInfo("Login!")
+	return c.JSON(http.StatusOK, response)
+}
+
+// we know that the login was successful if they got here.
+// step 1: check that access token is legit
+// step 2: find user with this google id, if not found then create
+// step 3: send back token and stuff
+func GoogleLogin(c echo.Context) error {
+	mySigningKey := GetSigningKey()
+	ip := c.RealIP()
+
+	// bind json to the login variable
+	creds := GoogleCredentials{}
+	defer c.Request().Body.Close()
+	err := json.NewDecoder(c.Request().Body).Decode(&creds)
+	if err != nil {
+		log.Println("failed reading login request, $s", err)
+		return c.String(http.StatusInternalServerError, "")
+	}
+
+	user := User{}
+
+	if creds.GoogleID == "" || creds.Email == "" {
+		return c.String(http.StatusInternalServerError, "Oops, that didn't work")
+	}
+
+	// check that token is legit
+	tokenInfo, err := VerifyGoogleIdToken(creds.TokenID)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "Google verification failed")
+	}
+
+	// not only is the tokenId legit, it matches the user input
+	if tokenInfo.Email != creds.Email {
+		return c.String(http.StatusInternalServerError, "Google verification failed: mismatch")
+	}
+
+	// Check in your db if the user exists or not
+	result := DB.Preload("Avatar").Where("username = ?", creds.Email).Where("google_id = ?", creds.GoogleID).First(&user)
+
+	if result.Error != nil {
+		// make a new user
+		user_id, err := CreateGoogleUser(creds)
+		if err != nil {
+			return c.String(http.StatusInternalServerError, "Email belongs to an existing account. Sign up manually or choose a different gmail account.")
+		}
+
+		result := DB.Preload("Avatar").First(&user, user_id)
+		if result.Error != nil {
+			return c.String(http.StatusInternalServerError, "Couldn't find newly created user")
+		}
+
+	}
+
+	claims := &jwtCustomClaims{
+		UserID:       user.ID,
+		UserSelector: user.Selector,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(time.Hour * (24 * 7)).Unix(),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Generate encoded token and send it as response.
+	// The signing string should be secret (a generated UUID works too)
+	t, err := token.SignedString(mySigningKey)
+	if err != nil {
+		return err
+	}
+
+	formatUser := BuildUser(user)
+
+	response := LoginResponse{
+		Token: t,
+		User:  formatUser}
+
+	MakeLoginHistory(creds.Email, ip, true)
+
+	LogInfo("Google Login!")
 
 	return c.JSON(http.StatusOK, response)
 }
@@ -137,15 +228,6 @@ func CustomerLogin(c echo.Context) error {
 
 	// Check in your db if the user exists or not
 	result := DB.Preload("Avatar").Preload("Customer").Where("username = ?", creds.Username).First(&user)
-
-	// if no customer
-	if user.Customer.ID == 0 {
-		// create customer if none exists
-		err = CreateCustomerAfterUserLogin(c, user.ID)
-		if err != nil {
-			return AbstractError(c, "Couldn't create customer")
-		}
-	}
 
 	if result.Error != nil {
 		MakeLoginHistory(creds.Username, ip, false)

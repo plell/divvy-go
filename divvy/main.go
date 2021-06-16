@@ -26,9 +26,6 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	// e.AutoTLSManager.HostPolicy = autocert.HostWhitelist("api.jamwallet.app")
-	// e.AutoTLSManager.Cache = autocert.DirCache("/var/www/.cache")
-
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -57,10 +54,7 @@ func main() {
 	core.StartDNALogger()
 
 	// Start server
-	// fmt.Println("start http 8000 server!")
+	fmt.Println("start http 8000 server!")
 	e.Logger.Fatal(e.Start(":8000"))
-
-	// fmt.Println("start tls 443 server!")
-	// e.Logger.Fatal(e.StartAutoTLS(":443"))
 
 }

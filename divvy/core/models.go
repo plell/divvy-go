@@ -25,8 +25,10 @@ var USER_TABLE = "users"
 
 type User struct {
 	DisplayName           string `json:"displayName"`
-	Username              string `gorm:"type:varchar(100);unique_index;unique" json:"username"`
+	Username              string `gorm:"type:varchar(100);unique_index;unique;not null" json:"username"`
 	City                  string `json:"city"`
+	GoogleID              string `json:"googleId"`
+	ImageUrl              string `json:"imageUrl"`
 	Password              string `json:"password"`
 	PasswordResetToken    string `json:"passwordResetToken"`
 	PasswordLastChanged   string `json:"passwordLastChanged"`
@@ -49,6 +51,8 @@ type UserAPI struct {
 	DisplayName string `json:"displayName"`
 	Username    string `json:"username"`
 	UserTypeID  uint   `json:"userTypeId"`
+	GoogleID    string `json:"googleId"`
+	ImageUrl    string `json:"imageUrl"`
 	City        string `json:"city"`
 	Verified    string `json:"verified"` // datestring of when verified
 	Selector    string `json:"selector"`

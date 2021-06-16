@@ -25,6 +25,8 @@ func MakeRoutes(e *echo.Echo) {
 	e.GET("/avatarOptions", GetAvatarOptions)
 	e.POST("/customerLogin", CustomerLogin)
 	e.POST("/login", Login)
+	e.POST("/googleLogin", GoogleLogin)
+
 	e.POST("/logout", Logout)
 	e.POST("/recover/:username", SendPasswordReset)
 	e.POST("/recover/submit", ChangePassword)

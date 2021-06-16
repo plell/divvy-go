@@ -114,6 +114,56 @@ func CreateUser(c echo.Context) error {
 	return c.String(http.StatusOK, "Success!")
 }
 
+func CreateGoogleUser(creds GoogleCredentials) (uint, error) {
+	var throwerror error = nil
+
+	impossiblePw := MakeInviteCode()
+	hashedPassword := HashAndSalt(impossiblePw)
+
+	user := User{
+		Username:    creds.Email,
+		Password:    hashedPassword,
+		GoogleID:    creds.GoogleID,
+		DisplayName: creds.Name,
+		City:        creds.City,
+		ImageUrl:    creds.ImageURL,
+		Selector:    MakeSelector(USER_TABLE),
+		UserTypeID:  USER_TYPE_BASIC,
+		Verified:    time.Now().String(),
+	}
+
+	result := DB.Create(&user) // pass pointer of data to Create
+
+	if result.Error != nil {
+		return 0, result.Error
+	}
+
+	// make a default avatar
+	avatar := Avatar{
+		UserID:    user.ID,
+		Feature1:  0,
+		Feature2:  0,
+		Feature3:  0,
+		Feature4:  0,
+		Feature5:  0,
+		Feature6:  0,
+		Feature7:  0,
+		Feature8:  0,
+		Feature9:  0,
+		Feature10: 0,
+		Feature11: 0,
+		Selector:  MakeSelector(AVATAR_TABLE),
+	}
+
+	result = DB.Create(&avatar) // pass pointer of data to Create
+	throwerror = result.Error
+
+	// create customer for all users, because they may create customer accounts later on
+	throwerror = CreateCustomerAfterUserCreation(user)
+
+	return user.ID, throwerror
+}
+
 func VerifyAccountEmail(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {

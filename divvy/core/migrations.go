@@ -92,11 +92,14 @@ func insertStaticRecords() {
 func CreateSuperUser() {
 	password := os.Getenv("SUPER_ADMIN_PASSWORD")
 	email := os.Getenv("SUPER_ADMIN_EMAIL")
+	googleId := os.Getenv("SUPER_GOOGLE_ID")
 	hashedPassword := HashAndSalt(password)
 
 	user := User{
 		Username:    email,
 		Password:    hashedPassword,
+		Verified:    "yes",
+		GoogleID:    googleId,
 		DisplayName: "david",
 		City:        "Seattle",
 		Selector:    MakeSelector(USER_TABLE),
@@ -122,6 +125,8 @@ func CreateSuperUser() {
 	}
 
 	DB.Create(&avatar) // pass pointer of data to Create
+
+	CreateCustomerAfterUserCreation(user)
 
 }
 

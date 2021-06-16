@@ -109,6 +109,29 @@ func CreateCustomerAfterUserLogin(c echo.Context, user_id uint) error {
 	return nil
 }
 
+func CreateCustomerAfterUserCreation(user User) error {
+	var throwerr error
+
+	stripe.Key = getStripeKey()
+
+	params := &stripe.CustomerParams{
+		Email: stripe.String(user.Username),
+	}
+
+	cstmr, err := customer.New(params)
+	throwerr = err
+
+	cust := Customer{
+		UserID:                  user.ID,
+		StripeCustomerAccountID: cstmr.ID,
+	}
+
+	result := DB.Create(&cust)
+	throwerr = result.Error
+
+	return throwerr
+}
+
 func CreateCustomerPortalSession(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
