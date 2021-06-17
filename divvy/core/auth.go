@@ -96,6 +96,13 @@ func Login(c echo.Context) error {
 		return AbstractError(c, "Email or password incorrect")
 	}
 
+	// make sure this is not a google id user
+	if user.GoogleID != "" {
+		// logged failed login
+		MakeLoginHistory(creds.Username, ip, false)
+		return AbstractError(c, "Please use Google Sign In")
+	}
+
 	claims := &jwtCustomClaims{
 		UserID:       user.ID,
 		UserSelector: user.Selector,
@@ -239,6 +246,13 @@ func CustomerLogin(c echo.Context) error {
 		// logged failed login
 		MakeLoginHistory(creds.Username, ip, false)
 		return AbstractError(c, "Email or password incorrect")
+	}
+
+	// make sure this is not a google id user
+	if user.GoogleID != "" {
+		// logged failed login
+		MakeLoginHistory(creds.Username, ip, false)
+		return AbstractError(c, "Please use Google Sign In")
 	}
 
 	claims := &jwtCustomClaims{
