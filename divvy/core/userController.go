@@ -41,7 +41,7 @@ type AvatarResponse struct {
 
 // we create a user record and a customer record for all records, so that they can use both jamwallet.app and jamwallet.store to earn and pay
 func CreateUser(c echo.Context) error {
-	req := UserCreator{}
+	req := Credentials{}
 	defer c.Request().Body.Close()
 	err := json.NewDecoder(c.Request().Body).Decode(&req)
 
@@ -50,8 +50,90 @@ func CreateUser(c echo.Context) error {
 		return AbstractError(c, "Couldn't read request")
 	}
 
-	if req.BetaKey == "" {
-		return AbstractError(c, "Sorry")
+	errorstring, errbool := DoBetaKeyCheck(req)
+	if errbool {
+		return c.String(http.StatusUnauthorized, "Secret key expired")
+	}
+	if errorstring != "" {
+		// send back a beta key request
+		return c.String(http.StatusOK, errorstring)
+	}
+
+	hashedPassword := HashAndSalt(req.Password)
+
+	user := User{
+		Username:    req.Username,
+		Password:    hashedPassword,
+		DisplayName: req.DisplayName,
+		City:        req.City,
+		Selector:    MakeSelector(USER_TABLE),
+		UserTypeID:  USER_TYPE_BASIC,
+
+		// TEMPORARY BETA KEY IMPLEMENTATION start
+		BetaKey:  req.BetaKey,
+		Verified: time.Now().String(),
+		// TEMPORARY BETA KEY IMPLEMENTATION end
+	}
+
+	result := DB.Create(&user) // pass pointer of data to Create
+
+	if result.Error != nil {
+		return AbstractError(c, result.Error.Error())
+	}
+
+	avatar := Avatar{
+		UserID:    user.ID,
+		Feature1:  req.Feature1,
+		Feature2:  req.Feature2,
+		Feature3:  req.Feature3,
+		Feature4:  req.Feature4,
+		Feature5:  req.Feature5,
+		Feature6:  req.Feature6,
+		Feature7:  req.Feature7,
+		Feature8:  req.Feature8,
+		Feature9:  req.Feature9,
+		Feature10: req.Feature10,
+		Feature11: req.Feature11,
+		Selector:  MakeSelector(AVATAR_TABLE),
+	}
+
+	result = DB.Create(&avatar) // pass pointer of data to Create
+
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't create avatar")
+	}
+
+	// create customer for all users, because they may create customer accounts later on
+	err = CreateCustomerFromUser(c, user.ID)
+
+	if err != nil {
+		return AbstractError(c, "Couldn't create customer")
+	}
+
+	emailVerificationCode := EmailVerificationCode{
+		UserID: user.ID,
+		Code:   MakeInviteCode(),
+	}
+
+	result = DB.Create(&emailVerificationCode) // pass pointer of data to Create
+
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't create verification code")
+	}
+
+	DeleteBetaKey(req)
+
+	return c.String(http.StatusOK, "Success!")
+}
+
+func CustomerCreateUser(c echo.Context) error {
+	req := Credentials{}
+	defer c.Request().Body.Close()
+	err := json.NewDecoder(c.Request().Body).Decode(&req)
+
+	log.Println("CustomerCreateUser")
+	if err != nil {
+		return AbstractError(c, "Couldn't read request")
 	}
 
 	hashedPassword := HashAndSalt(req.Password)
@@ -94,36 +176,26 @@ func CreateUser(c echo.Context) error {
 	}
 
 	// create customer for all users, because they may create customer accounts later on
-	err = CreateCustomerAfterUserLogin(c, user.ID)
+	err = CreateCustomerFromUser(c, user.ID)
 
 	if err != nil {
 		return AbstractError(c, "Couldn't create customer")
 	}
 
-	emailVerificationCode := EmailVerificationCode{
-		UserID: user.ID,
-		Code:   MakeInviteCode(),
-	}
-
-	result = DB.Create(&emailVerificationCode) // pass pointer of data to Create
-
-	if result.Error != nil {
-		return AbstractError(c, "Couldn't create verification code")
-	}
-
 	return c.String(http.StatusOK, "Success!")
 }
 
-func CreateGoogleUser(creds GoogleCredentials) (uint, error) {
+func CreateGoogleUser(creds Credentials) (uint, error) {
 	var throwerror error = nil
 
 	impossiblePw := MakeInviteCode()
 	hashedPassword := HashAndSalt(impossiblePw)
 
 	user := User{
-		Username:    creds.Email,
+		Username:    creds.Username,
 		Password:    hashedPassword,
 		GoogleID:    creds.GoogleID,
+		BetaKey:     creds.BetaKey,
 		DisplayName: creds.Name,
 		City:        creds.City,
 		ImageUrl:    creds.ImageURL,

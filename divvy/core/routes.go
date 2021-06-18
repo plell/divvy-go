@@ -23,20 +23,18 @@ func MakeRoutes(e *echo.Echo) {
 
 	// token not required group
 	e.GET("/avatarOptions", GetAvatarOptions)
-	e.POST("/customerLogin", CustomerLogin)
-	e.POST("/login", Login)
-	e.POST("/googleLogin", GoogleLogin)
 
+	e.POST("/login", Login)
 	e.POST("/logout", Logout)
 	e.POST("/recover/:username", SendPasswordReset)
 	e.POST("/recover/submit", ChangePassword)
-
+	e.POST("/user", CreateUser)
+	e.POST("/googleLogin", GoogleLoginOrSignUp)
 	e.POST("/beta/request", SendBetaInviteRequest)
 
-	// beta key required
-	b := e.Group("")
-	b.Use(HasBetaKey)
-	b.POST("/user", CreateUser)
+	e.POST("/customerLogin", CustomerLogin)
+	e.POST("/customerUser", CustomerCreateUser)
+	e.POST("/customerGoogleLogin", CustomerGoogleLoginOrSignUp)
 
 	// userSelector required
 	u := e.Group("")
@@ -53,30 +51,33 @@ func MakeRoutes(e *echo.Echo) {
 	}
 	r.Use(middleware.JWTWithConfig(config))
 	r.GET("/ping", Pong)
-
 	r.GET("/user", GetUser)
-	r.PATCH("/user", UpdateUser)
-	r.PATCH("/avatar", UpdateAvatar)
-	r.GET("/avatar", GetAvatar)
-	r.GET("/pod/list", GetPodList)
-	r.POST("/pod", CreatePod)
 
-	r.POST("/pod/join/summary", GetJoinPod)
-	r.POST("/stripe/account", LinkStripeAccount)
-	r.GET("/stripe/account", GetStripeAccount)
-	r.POST("/verify/:verificationCode", VerifyAccountEmail)
-	r.POST("/sendVerification", SendVerificationEmail)
-	r.POST("/user/transfers/:userSelector", GetUserTransfers)
-	r.POST("/user/transferlist/:userSelector", GetUserTransferList)
+	storeUser := r.Group("")
+	storeUser.Use(IsStore)
+	storeUser.GET("/stripe/customerAccount", GetStripeCustomerAccount)
+	storeUser.GET("/stripe/customerPortal", CreateCustomerPortalSession)
+	storeUser.PATCH("/stripe/customerCheckoutSession/:sessionId", UpdateCheckoutSessionByCustomer)
 
-	r.POST("/pod/join", JoinPod)
+	appUser := r.Group("")
+	appUser.Use(IsApp)
+	appUser.PATCH("/avatar", UpdateAvatar)
+	appUser.GET("/avatar", GetAvatar)
+	appUser.GET("/pod/list", GetPodList)
+	appUser.POST("/pod", CreatePod)
 
-	r.GET("/stripe/customerAccount", GetStripeCustomerAccount)
-	r.GET("/stripe/customerPortal", CreateCustomerPortalSession)
-	r.PATCH("/stripe/customerCheckoutSession/:sessionId", UpdateCheckoutSessionByCustomer)
+	appUser.POST("/pod/join/summary", GetJoinPod)
+	appUser.POST("/stripe/account", LinkStripeAccount)
+	appUser.GET("/stripe/account", GetStripeAccount)
+	appUser.POST("/verify/:verificationCode", VerifyAccountEmail)
+	appUser.POST("/sendVerification", SendVerificationEmail)
+	appUser.POST("/user/transfers/:userSelector", GetUserTransfers)
+	appUser.POST("/user/transferlist/:userSelector", GetUserTransferList)
+	appUser.POST("/pod/join", JoinPod)
+	appUser.PATCH("/user", UpdateUser)
 
-	// s: require token, pod collaborator
-	s := r.Group("")
+	// s: require token, appUser, pod collaborator
+	s := appUser.Group("")
 	s.Use(IsPodMember)
 	s.GET("/pod/:podSelector", GetPod)
 	s.GET("/pod/invitelist/:podSelector", GetInvites)
@@ -88,13 +89,13 @@ func MakeRoutes(e *echo.Echo) {
 	s.POST("/stripe/chargelist/:podSelector", GetPodChargeList)
 	s.GET("/collaboratorlist/:podSelector", GetCollaboratorList)
 
-	// v: require token, pod collaborator, and admin
+	// v: require token, appUser, pod collaborator, and admin
 	v := s.Group("")
 	v.Use(IsAdmin)
 	v.PATCH("/pod/restore/:podSelector", CancelScheduleDestroyPod)
 	v.DELETE("/pod/invite/:podSelector/:selector", DeleteInvite)
 
-	// vp: require token, pod collaborator, admin, pod cant be schedule for delete
+	// vp: require token, appUser, pod collaborator, admin, pod cant be schedule for delete
 	vp := v.Group("")
 	vp.Use(PodIsNotScheduledForDelete)
 	vp.PATCH("/pod/destroy/:podSelector", ScheduleDestroyPod)
@@ -103,19 +104,19 @@ func MakeRoutes(e *echo.Echo) {
 	vp.PATCH("/collaborator/role/:podSelector", UpdateCollaboratorRole)
 	vp.DELETE("/collaborator/:podSelector/:selector", DeleteCollaborator)
 
-	// a: require token, stripe account, pod collaborator
+	// a: require token, appUser, stripe account, pod collaborator
 	a := s.Group("")
 	a.Use(HasStripeAccount)
 	a.POST("/stripe/refund/:podSelector/:txnId", ScheduleRefund)
 	a.POST("/stripe/refund/cancel/:podSelector/:txnId", CancelScheduledRefund)
 
-	// a: require token, stripe account, pod collaborator, pod not deleting
+	// a: require token, appUser, stripe account, pod collaborator, pod not deleting
 	ap := a.Group("")
 	ap.Use(PodIsNotScheduledForDelete)
 	ap.POST("/stripe/checkoutSession/:podSelector", CreateCheckoutSession)
 
-	// super: requires token and superadmin
-	super := r.Group("")
+	// super: requires token, appUser, and superadmin
+	super := appUser.Group("")
 	super.Use(IsSuperAdmin)
 	super.POST("/beta/invite", SendBetaInvite)
 	super.GET("/beta/requestlist", GetBetaRequestList)

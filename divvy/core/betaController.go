@@ -86,6 +86,7 @@ func SendBetaInviteRequest(c echo.Context) error {
 		betaKeyRequest := BetaKeyRequest{
 			Email:   req.Email,
 			Message: req.Message,
+			City:    req.City,
 		}
 
 		result = DB.Create(&betaKeyRequest)
@@ -119,6 +120,11 @@ func SendBetaInviteRequest(c echo.Context) error {
 	dd = append(dd, DynamicData{
 		Key:   "email",
 		Value: req.Email,
+	})
+
+	dd = append(dd, DynamicData{
+		Key:   "city",
+		Value: req.City,
 	})
 
 	dd = append(dd, DynamicData{

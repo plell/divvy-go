@@ -32,6 +32,34 @@ func HasBetaKey(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+func IsApp(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		user := c.Get("user").(*jwt.Token)
+		claims := user.Claims.(*jwtCustomClaims)
+		isApp := claims.IsApp
+
+		if !isApp {
+			return c.String(http.StatusInternalServerError, "Action unauthorized.")
+		}
+
+		return next(c)
+	}
+}
+
+func IsStore(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		user := c.Get("user").(*jwt.Token)
+		claims := user.Claims.(*jwtCustomClaims)
+		isStore := claims.IsStore
+
+		if !isStore {
+			return c.String(http.StatusInternalServerError, "Action unauthorized.")
+		}
+
+		return next(c)
+	}
+}
+
 func IsSuperAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		user := c.Get("user").(*jwt.Token)

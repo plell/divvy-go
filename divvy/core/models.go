@@ -32,6 +32,7 @@ type User struct {
 	Password              string `json:"password"`
 	PasswordResetToken    string `json:"passwordResetToken"`
 	PasswordLastChanged   string `json:"passwordLastChanged"`
+	BetaKey               string `json:"betaKey"`
 	UserType              UserType
 	UserTypeID            uint          `json:"userTypeId"`
 	Selector              string        `json:"selector"`
@@ -355,7 +356,7 @@ type RoleType struct {
 var BETA_KEY_TABLE = "beta_keys"
 
 type BetaKey struct {
-	BetaKey string `json:"betaKey"`
+	BetaKey string `gorm:"not null" json:"betaKey"`
 	Public  bool   `json:"public"`
 	gorm.Model
 	ByTheBy
@@ -364,7 +365,8 @@ type BetaKey struct {
 var BETA_KEY_REQUESTS_TABLE = "beta_key_requests"
 
 type BetaKeyRequest struct {
-	Email   string `json:"email"`
+	Email   string `gorm:"not null" json:"email"`
+	City    string `json:"city"`
 	Message string `json:"message"`
 	gorm.Model
 	ByTheBy

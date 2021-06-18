@@ -75,7 +75,7 @@ func GetStripeAccount(c echo.Context) error {
 	return c.JSON(http.StatusOK, acct)
 }
 
-func CreateCustomerAfterUserLogin(c echo.Context, user_id uint) error {
+func CreateCustomerFromUser(c echo.Context, user_id uint) error {
 	user := User{}
 	result := DB.First(&user, user_id)
 
