@@ -273,22 +273,21 @@ func calcJamFees(fullamount int64) int64 {
 func LinkStripeAccount(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
-		return AbstractError(c, "Something went wrong")
+		return AbstractError(c, "Couldn't get token")
 	}
 
 	stripe.Key = getStripeKey()
 
-	decodedJson := User{}
-	defer c.Request().Body.Close()
-	err = json.NewDecoder(c.Request().Body).Decode(&decodedJson)
-	if err != nil {
-		return c.String(http.StatusInternalServerError, "no good")
+	user := User{}
+	result := DB.First(&user, user_id)
+	if result.Error != nil {
+		return AbstractError(c, "Couldn't find user")
 	}
 
 	// check if user has stripe account
 	stripeAccount := StripeAccount{}
 	accountId := ""
-	result := DB.Where("user_id = ?", user_id).First(&stripeAccount)
+	result = DB.Where("user_id = ?", user_id).First(&stripeAccount)
 
 	if result.Error != nil {
 		// *******************
@@ -304,7 +303,7 @@ func LinkStripeAccount(c echo.Context) error {
 			// 	},
 			// },
 			Country: stripe.String("US"),
-			Email:   stripe.String("plelldavid+1@gmail.com"),
+			Email:   stripe.String(user.Username),
 			Type:    stripe.String("standard"),
 		}
 		acct, err := account.New(accountParams)
