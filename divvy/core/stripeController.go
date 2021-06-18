@@ -366,6 +366,7 @@ func LinkStripeAccount(c echo.Context) error {
 type CreateCheckoutSessionResponse struct {
 	SessionID       string `json:"sessionId"`
 	PaymentIntentID string `json:"paymentIntentId"`
+	Price           int64  `json:"price"`
 }
 
 type CheckoutSessionRequest struct {
@@ -493,6 +494,7 @@ func CreateCheckoutSession(c echo.Context) error {
 	data := CreateCheckoutSessionResponse{
 		SessionID:       session.ID,
 		PaymentIntentID: session.PaymentIntent.ID,
+		Price:           request.Amount,
 	}
 
 	return c.JSON(http.StatusOK, data)
