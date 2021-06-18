@@ -90,7 +90,7 @@ func insertStaticRecords() {
 }
 
 func CreateSuperUser() {
-	password := os.Getenv("SUPER_ADMIN_PASSWORD")
+	password := MakeInviteCode()
 	email := os.Getenv("SUPER_ADMIN_EMAIL")
 	googleId := os.Getenv("SUPER_GOOGLE_ID")
 	hashedPassword := HashAndSalt(password)
@@ -98,7 +98,8 @@ func CreateSuperUser() {
 	user := User{
 		Username:    email,
 		Password:    hashedPassword,
-		Verified:    "yes",
+		Verified:    "superadmin",
+		BetaKey:     "superadmin",
 		GoogleID:    googleId,
 		DisplayName: "david",
 		City:        "Seattle",
