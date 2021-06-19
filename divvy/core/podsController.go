@@ -30,7 +30,7 @@ func CreatePod(c echo.Context) error {
 		Description:     req.Description,
 		Selector:        MakeSelector(POD_TABLE),
 		PayoutTypeId:    req.PayoutTypeId,
-		LifecycleTypeId: req.LifecycleTypeId,
+		LifecycleTypeId: 1,
 	}
 
 	result := DB.Create(&pod) // pass pointer of data to Create
@@ -101,7 +101,7 @@ func UpdatePod(c echo.Context) error {
 	pod.Name = req.Name
 	pod.Description = req.Description
 	pod.PayoutTypeId = req.PayoutTypeId
-	pod.LifecycleTypeId = req.LifecycleTypeId
+	// pod.LifecycleTypeId = req.LifecycleTypeId
 
 	result = DB.Save(&pod) // pass pointer of data to Create
 
