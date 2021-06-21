@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/sendgrid/sendgrid-go"
@@ -115,8 +116,21 @@ type PasswordResetRequest struct {
 	Path string `json:"path"`
 }
 
+func IsGmailAddress(s string) bool {
+	does := false
+	if strings.Contains(s, "@gmail.com") {
+		does = true
+	}
+	return does
+}
+
 func SendPasswordReset(c echo.Context) error {
 	username := c.Param("username")
+
+	if IsGmailAddress(username) {
+		return AbstractError(c, "Google manages gmail account passwords.")
+	}
+
 	user := User{}
 	result := DB.Where("username = ?", username).First(&user)
 	if result.Error != nil {
