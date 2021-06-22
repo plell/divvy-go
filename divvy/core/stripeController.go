@@ -1030,7 +1030,8 @@ func DoFeeTransferToJamWalletCron() {
 	log.Println("availableBalance")
 	log.Println(availableBalance)
 
-	createdSinceDaysGo := time.Now().AddDate(0, 0, -30).Unix()
+	// get all charges in the last 15 days
+	createdSinceDaysGo := time.Now().AddDate(0, 0, -15).Unix()
 	params := &stripe.ChargeListParams{
 		CreatedRange: &stripe.RangeQueryParams{
 			GreaterThan: createdSinceDaysGo,
@@ -1513,8 +1514,8 @@ func ScheduleRefund(c echo.Context) error {
 	}
 
 	// send email to all collaborators
-	podSelector := c.Param("podSelector")
-	SendRefundScheduledEmail(podSelector)
+	// podSelector := c.Param("podSelector")
+	// SendRefundScheduledEmail(podSelector)
 
 	return c.String(http.StatusOK, "Refund scheduled. Allow time for processing.")
 }
@@ -1602,8 +1603,8 @@ func CancelScheduledRefund(c echo.Context) error {
 	}
 
 	// send email to all collaborators
-	podSelector := c.Param("podSelector")
-	SendRefundCancelledEmail(podSelector)
+	// podSelector := c.Param("podSelector")
+	// SendRefundCancelledEmail(podSelector)
 
 	return c.JSON(http.StatusOK, updatedCharge)
 }
