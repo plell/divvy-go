@@ -743,9 +743,9 @@ func DoChargeTransfersAndRefundsCron() {
 		collaboratorLength := int64(len(collaborators))
 		// get charges for pod
 
-		// 30 days
-		createdSinceDaysGo := time.Now().AddDate(0, 0, -30).Unix()
-		twentyFourHrsAgo := time.Now().AddDate(0, 0, -1).Unix()
+		// 5 days
+		createdSinceDaysGo := time.Now().AddDate(0, 0, -5).Unix()
+		twentyFourHrsAgo := time.Now().AddDate(0, 0, 0).Unix()
 		params := &stripe.ChargeListParams{
 			TransferGroup: stripe.String(pod.Selector),
 			CreatedRange: &stripe.RangeQueryParams{
@@ -1030,8 +1030,8 @@ func DoFeeTransferToJamWalletCron() {
 	log.Println("availableBalance")
 	log.Println(availableBalance)
 
-	// get all charges in the last 15 days
-	createdSinceDaysGo := time.Now().AddDate(0, 0, -15).Unix()
+	// get all charges in the last 5 days
+	createdSinceDaysGo := time.Now().AddDate(0, 0, -5).Unix()
 	params := &stripe.ChargeListParams{
 		CreatedRange: &stripe.RangeQueryParams{
 			GreaterThan: createdSinceDaysGo,
