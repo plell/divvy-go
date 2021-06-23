@@ -11,6 +11,7 @@ import (
 
 func MakeRoutes(e *echo.Echo) {
 
+	e.Use(LogPathAndIp)
 	e.GET("/", func(c echo.Context) error {
 		return c.HTML(http.StatusOK, `
 			<h1>Welcome to Echo!</h1>

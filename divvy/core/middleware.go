@@ -64,16 +64,10 @@ func IsSuperAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		user := c.Get("user").(*jwt.Token)
 		claims := user.Claims.(*jwtCustomClaims)
-		user_id := claims.UserID
 		log.Println("IsSuperAdmin?")
+		isSuperAdmin := claims.IsSuperAdmin
 
-		myuser := User{}
-		result := DB.First(&myuser, user_id)
-		if result.Error != nil {
-			return AbstractError(c, "Can't find user")
-		}
-
-		if myuser.UserTypeID != USER_TYPE_SUPER {
+		if !isSuperAdmin {
 			return c.String(http.StatusInternalServerError, "Action unauthorized.")
 		}
 
@@ -179,6 +173,17 @@ func UserExists(next echo.HandlerFunc) echo.HandlerFunc {
 			return c.String(http.StatusUnauthorized, "Unauthorized")
 		}
 
+		return next(c)
+	}
+}
+
+func LogPathAndIp(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		m := c.Request().Method
+		if m == "DELETE" || m == "PATCH" {
+			ip := c.RealIP()
+			LogInfo(ip + " requesting at " + c.Path())
+		}
 		return next(c)
 	}
 }

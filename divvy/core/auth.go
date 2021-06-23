@@ -51,6 +51,7 @@ type jwtCustomClaims struct {
 	UserSelector string `json:"userSelector"`
 	IsStore      bool   `json:"isStore"`
 	IsApp        bool   `json:"isApp"`
+	IsSuperAdmin bool   `json:"isSuperAdmin"`
 	// UUID  string `json:"uuid"`
 	// Admin bool   `json:"admin"`
 	jwt.StandardClaims
@@ -140,6 +141,10 @@ func Login(c echo.Context) error {
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * (24 * 7)).Unix(),
 		},
+	}
+
+	if user.UserTypeID == USER_TYPE_SUPER {
+		claims.IsSuperAdmin = true
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -254,6 +259,10 @@ func GoogleLoginOrSignUp(c echo.Context) error {
 		},
 	}
 
+	if user.UserTypeID == USER_TYPE_SUPER {
+		claims.IsSuperAdmin = true
+	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	// Generate encoded token and send it as response.
@@ -322,6 +331,10 @@ func CustomerLogin(c echo.Context) error {
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * (24 * 7)).Unix(),
 		},
+	}
+
+	if user.UserTypeID == USER_TYPE_SUPER {
+		claims.IsSuperAdmin = true
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -398,6 +411,10 @@ func CustomerGoogleLoginOrSignUp(c echo.Context) error {
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * (24 * 7)).Unix(),
 		},
+	}
+
+	if user.UserTypeID == USER_TYPE_SUPER {
+		claims.IsSuperAdmin = true
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
