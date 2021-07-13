@@ -115,6 +115,7 @@ func MakeRoutes(e *echo.Echo) {
 	ap := a.Group("")
 	ap.Use(PodIsNotScheduledForDelete)
 	ap.POST("/stripe/checkoutSession/:podSelector", CreateCheckoutSession)
+	ap.POST("/stripe/checkoutLink/:podSelector", CreateCheckoutLink)
 
 	// super: requires token, appUser, and superadmin
 	super := appUser.Group("")

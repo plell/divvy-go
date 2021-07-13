@@ -381,13 +381,6 @@ func CreateCheckoutSession(c echo.Context) error {
 		return AbstractError(c, "Something went wrong")
 	}
 
-	// does user have a stripe account?
-	stripeAccount := StripeAccount{}
-	result := DB.Where("user_id = ?", user_id).First(&stripeAccount)
-	if result.Error != nil {
-		return c.String(http.StatusInternalServerError, "no stripe account")
-	}
-
 	// here decode the pod selector and include it in TRANSFER GROUP
 	request := CheckoutSessionRequest{}
 	defer c.Request().Body.Close()
@@ -398,7 +391,7 @@ func CreateCheckoutSession(c echo.Context) error {
 
 	// get pod for metadata
 	pod := Pod{}
-	result = DB.Where("selector = ?", request.PodSelector).First(&pod)
+	result := DB.Where("selector = ?", request.PodSelector).First(&pod)
 	if result.Error != nil {
 		return c.String(http.StatusInternalServerError, "no pod")
 	}
@@ -497,6 +490,24 @@ func CreateCheckoutSession(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, data)
+}
+
+func GetConnectedAccountBalance(c echo.Context) error {
+	// user_id, err := GetUserIdFromToken(c)
+	// sessionId := c.Param("sessionId")
+
+	stripe.Key = getStripeKey()
+	// Set your secret key. Remember to switch to your live secret key in production.
+	// See your keys here: https://dashboard.stripe.com/apikeys
+	stripe.Key = "sk_test_51IbvKYGXLOZpkynGEmT2FC8i3YvvTMPAhf6DWIB4dTjv7kDaimXAbPdxs1541egfPcmoaN5T45JvLXrxjeOyrifE00cDfILhPc"
+
+	params := &stripe.BalanceParams{}
+	params.SetStripeAccount("{{CONNECTED_STRIPE_ACCOUNT_ID}}")
+	bal, _ := balance.Get(params)
+
+	log.Println(bal.Available)
+
+	return c.String(http.StatusOK, "yay")
 }
 
 func UpdateCheckoutSessionByCustomer(c echo.Context) error {

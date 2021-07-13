@@ -4,7 +4,6 @@ import (
 
 	//   "strconv"
 	"fmt"
-	"os"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -22,14 +21,14 @@ func ConnectDB() {
 	// "user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
 	// sslmode := os.Getenv("SSLMODE")
 
-	username := os.Getenv("USERNAME")
-	password := os.Getenv("PASSWORD")
-	host := os.Getenv("HOST")
-	port := os.Getenv("PORT")
-	database := os.Getenv("DATABASE")
-	dsn := username + ":" + password + "@tcp(" + host + ":" + port + ")/" + database + "?charset=utf8mb4&parseTime=True&loc=Local"
+	// username := os.Getenv("USERNAME")
+	// password := os.Getenv("PASSWORD")
+	// host := os.Getenv("HOST")
+	// port := os.Getenv("PORT")
+	// database := os.Getenv("DATABASE")
+	// dsn := username + ":" + password + "@tcp(" + host + ":" + port + ")/" + database + "?charset=utf8mb4&parseTime=True&loc=Local"
 
-	// dsn := "root:password@tcp(127.0.0.1:3306)/divvy?charset=utf8mb4&parseTime=True&loc=Local"
+	dsn := "root:password@tcp(127.0.0.1:3306)/divvy?charset=utf8mb4&parseTime=True&loc=Local"
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,

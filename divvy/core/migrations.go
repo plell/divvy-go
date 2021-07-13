@@ -28,6 +28,7 @@ func MigrateUp() {
 		&Customer{},
 		&Chargeback{},
 		&Refund{},
+		&Link{},
 	)
 
 	insertStaticRecords()

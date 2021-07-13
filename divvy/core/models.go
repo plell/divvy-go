@@ -282,6 +282,20 @@ type Customer struct {
 	ByTheBy
 }
 
+var LINK_TABLE = "links"
+
+type Link struct {
+	// selector is used to create a checkout for the pod, the store link will be /link/selector
+	// find the associated pod and create a checkout session for that pod and amount!
+	Selector             string `json:"selector"`
+	Amount               int64  `json:"amount"`
+	PodSelector          string `json:"podSelector"`
+	CollaboratorSelector string `json:"collaboratorSelector"`
+	UserSelector         string `json:"userSelector"`
+	gorm.Model
+	ByTheBy
+}
+
 var CHARGEBACK_TABLE = "chargebacks"
 
 type Chargeback struct {
