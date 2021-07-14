@@ -37,6 +37,9 @@ func MakeRoutes(e *echo.Echo) {
 	e.POST("/customerUser", CustomerCreateUser)
 	e.POST("/customerGoogleLogin", CustomerGoogleLoginOrSignUp)
 
+	e.GET("/link/getCheckoutLink/:selector", GetCheckoutLink)
+	e.POST("/stripe/createSessionFromCheckoutLink/:selector", CreateCheckoutSessionFromLinkByCustomer)
+
 	// userSelector required
 	u := e.Group("")
 	u.Use(UserExists)

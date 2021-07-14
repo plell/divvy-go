@@ -369,10 +369,12 @@ type CreateCheckoutSessionResponse struct {
 }
 
 type CheckoutSessionRequest struct {
-	Amount      int64  `json:"amount"`
-	PodSelector string `json:"podSelector"`
-	Currency    string `json:"currency"`
-	CustomerID  string `json:"customerId"`
+	Amount       int64  `json:"amount"`
+	CustomAmount int64  `json:"customAmount"`
+	PodSelector  string `json:"podSelector"`
+	Currency     string `json:"currency"`
+	CustomerID   string `json:"customerId"`
+	UserSelector string `json:"userSelector"`
 }
 
 func CreateCheckoutSession(c echo.Context) error {
@@ -487,6 +489,119 @@ func CreateCheckoutSession(c echo.Context) error {
 		SessionID:       session.ID,
 		PaymentIntentID: session.PaymentIntent.ID,
 		Price:           request.Amount,
+	}
+
+	return c.JSON(http.StatusOK, data)
+}
+
+func CreateCheckoutSessionFromLinkByCustomer(c echo.Context) error {
+
+	// the user uses this to get a checkout session from a link.
+	// if the link isFixedAmount, amount check
+	// if not, get "customAmount" from request body instead
+
+	// you do not need a token to run this route
+	// potential for abuse
+
+	linkSelector := c.Param("selector")
+
+	// here decode to get the customAmount, if there
+	request := CheckoutSessionRequest{}
+	defer c.Request().Body.Close()
+	err := json.NewDecoder(c.Request().Body).Decode(&request)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "can't decode request")
+	}
+
+	// here decode the pod selector and include it in TRANSFER GROUP
+	link := Link{}
+	result := DB.Where("selector = ?", linkSelector).First(&link)
+	if result.Error != nil {
+		return c.String(http.StatusInternalServerError, "This link is broken")
+	}
+
+	// do amount
+	amount := link.Amount
+	if !link.IsFixedAmount {
+		amount = request.CustomAmount
+	}
+
+	if amount < 100 {
+		return c.String(http.StatusInternalServerError, "Amount minimum is 1USD")
+	}
+
+	transferGroup := link.PodSelector
+
+	var metaDataPack map[string]string
+
+	metaDataPack = make(map[string]string)
+
+	metaDataPack["userSelector"] = link.UserSelector
+	metaDataPack["podSelector"] = link.PodSelector
+	metaDataPack["collaboratorSelector"] = link.CollaboratorSelector
+
+	amountAfterFees, stripeFees, jamFees := getTotalAmountAfterFees(amount)
+
+	metaDataPack["stripeFees"] = strconv.Itoa(int(stripeFees))
+	metaDataPack["jamFees"] = strconv.Itoa(int(jamFees))
+	metaDataPack["amountAfterFees"] = strconv.Itoa(int(amountAfterFees))
+
+	stripe.Key = getStripeKey()
+	params := &stripe.CheckoutSessionParams{
+		PaymentIntentData: &stripe.CheckoutSessionPaymentIntentDataParams{
+			TransferGroup: stripe.String(transferGroup),
+			Metadata:      metaDataPack,
+		},
+		PaymentMethodTypes: stripe.StringSlice([]string{
+			"card",
+		}),
+		Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			&stripe.CheckoutSessionLineItemParams{
+				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
+					Currency: stripe.String(string(stripe.CurrencyUSD)),
+					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
+						Name: stripe.String("Donation"),
+					},
+					UnitAmount: stripe.Int64(amount),
+				},
+				Quantity: stripe.Int64(1),
+			},
+		},
+		SuccessURL: stripe.String("https://jamwallet.store/success"),
+		CancelURL:  stripe.String("https://jamwallet.store/fail"),
+	}
+
+	params.AddMetadata("userSelector", link.UserSelector)
+	params.AddMetadata("podSelector", link.PodSelector)
+	params.AddMetadata("collaboratorSelector", link.CollaboratorSelector)
+
+	// add customer?
+	userSelector := request.UserSelector
+	if userSelector != "" {
+		user := User{}
+		result := DB.Preload("Customer").Where("selector = ?", userSelector).First(&user)
+		if result.Error != nil {
+			return c.String(http.StatusInternalServerError, "User cannot be found")
+		}
+		cstmr, err := customer.Get(user.Customer.StripeCustomerAccountID, nil)
+		if err != nil {
+			return AbstractError(c, "Couldn't get customer!")
+		}
+		// fill in customer data
+		params.Customer = &cstmr.ID
+		// params.CustomerEmail = &cstmr.Email
+	}
+
+	session, err := session.New(params)
+
+	if err != nil {
+		// return c.Error(err)
+		return echo.NewHTTPError(http.StatusUnauthorized, err)
+	}
+
+	data := CreateCheckoutSessionResponse{
+		SessionID: session.ID,
 	}
 
 	return c.JSON(http.StatusOK, data)

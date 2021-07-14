@@ -288,6 +288,8 @@ type Link struct {
 	// selector is used to create a checkout for the pod, the store link will be /link/selector
 	// find the associated pod and create a checkout session for that pod and amount!
 	Selector             string `json:"selector"`
+	IsFixedAmount        bool   `json:"isFixedAmount"`
+	Name                 string `json:"name"`
 	Amount               int64  `json:"amount"`
 	PodSelector          string `json:"podSelector"`
 	CollaboratorSelector string `json:"collaboratorSelector"`
