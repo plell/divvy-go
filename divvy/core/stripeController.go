@@ -608,21 +608,97 @@ func CreateCheckoutSessionFromLinkByCustomer(c echo.Context) error {
 }
 
 func GetConnectedAccountBalance(c echo.Context) error {
-	// user_id, err := GetUserIdFromToken(c)
-	// sessionId := c.Param("sessionId")
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	user := User{}
+
+	result := DB.Preload("StripeAccount").First(&user, user_id)
+	if result.Error != nil {
+		return c.String(http.StatusInternalServerError, "Couldn't get user")
+	}
 
 	stripe.Key = getStripeKey()
 	// Set your secret key. Remember to switch to your live secret key in production.
-	// See your keys here: https://dashboard.stripe.com/apikeys
-	stripe.Key = "sk_test_51IbvKYGXLOZpkynGEmT2FC8i3YvvTMPAhf6DWIB4dTjv7kDaimXAbPdxs1541egfPcmoaN5T45JvLXrxjeOyrifE00cDfILhPc"
 
 	params := &stripe.BalanceParams{}
-	params.SetStripeAccount("{{CONNECTED_STRIPE_ACCOUNT_ID}}")
+	params.SetStripeAccount(user.StripeAccount.AcctID)
 	bal, _ := balance.Get(params)
 
-	log.Println(bal.Available)
+	return c.JSON(http.StatusOK, bal)
+}
 
-	return c.String(http.StatusOK, "yay")
+func GetConnectedPayoutList(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	user := User{}
+
+	result := DB.Preload("StripeAccount").First(&user, user_id)
+	if result.Error != nil {
+		return c.String(http.StatusInternalServerError, "Couldn't get user")
+	}
+
+	payouts := []*stripe.Payout{}
+
+	stripe.Key = getStripeKey()
+
+	params := &stripe.PayoutListParams{}
+	// params.Filters.AddFilter("limit", "", "3")
+	params.SetStripeAccount(user.StripeAccount.AcctID)
+	i := payout.List(params)
+
+	for i.Next() {
+		p := i.Payout()
+		payouts = append(payouts, p)
+	}
+
+	return c.JSON(http.StatusOK, payouts)
+}
+
+func CreateConnectedAccountPayout(c echo.Context) error {
+	user_id, err := GetUserIdFromToken(c)
+	if err != nil {
+		return AbstractError(c, "Something went wrong")
+	}
+
+	user := User{}
+
+	result := DB.Preload("StripeAccount").First(&user, user_id)
+	if result.Error != nil {
+		return c.String(http.StatusInternalServerError, "Couldn't get user")
+	}
+
+	stripe.Key = getStripeKey()
+
+	// first get their balance
+	params := &stripe.BalanceParams{}
+	params.SetStripeAccount(user.StripeAccount.AcctID)
+	bal, _ := balance.Get(params)
+
+	balanceAmount := 0
+
+	for _, b := range bal.Available {
+		balanceAmount += int(b.Value)
+	}
+
+	if balanceAmount == 0 {
+		return AbstractError(c, "Nothing to payout!")
+	}
+
+	// Set your secret key. Remember to switch to your live secret key in production.
+	p_params := &stripe.PayoutParams{
+		Amount:   stripe.Int64(int64(balanceAmount)),
+		Currency: stripe.String(string(stripe.CurrencyUSD)),
+	}
+	p_params.SetStripeAccount(user.StripeAccount.AcctID)
+	p, _ := payout.New(p_params)
+
+	return c.JSON(http.StatusOK, p)
 }
 
 func UpdateCheckoutSessionByCustomer(c echo.Context) error {

@@ -73,6 +73,10 @@ func MakeRoutes(e *echo.Echo) {
 	appUser.POST("/pod/join/summary", GetJoinPod)
 	appUser.POST("/stripe/account", LinkStripeAccount)
 	appUser.GET("/stripe/account", GetStripeAccount)
+	// fixme, do error handling on stripe calls
+	appUser.GET("/stripe/account/balance", GetConnectedAccountBalance)
+	appUser.POST("/stripe/account/payoutlist", GetConnectedPayoutList)
+
 	appUser.POST("/verify/:verificationCode", VerifyAccountEmail)
 	appUser.POST("/sendVerification", SendVerificationEmail)
 	appUser.POST("/user/transfers/:userSelector", GetUserTransfers)

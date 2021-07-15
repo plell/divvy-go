@@ -42,7 +42,7 @@ func main() {
 	core.MigrateUp()
 
 	c := cron.New()
-	c.AddFunc("@every 1h", func() {
+	c.AddFunc("@every 30m", func() {
 		core.DoChargeTransfersAndRefundsCron()
 		fmt.Println("cron ran!")
 	})
