@@ -161,14 +161,10 @@ func getUserIdsFromCollaborators(col Collaborators) []uint {
 }
 
 func GetPodList(c echo.Context) error {
-	// get user_id from jwt
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
 		return AbstractError(c, "Something went wrong")
 	}
-
-	// test sending an email
-	// SendEmail()
 
 	// get all my collaborator records
 	collaborators := []Collaborator{}
@@ -188,7 +184,7 @@ func GetPodList(c echo.Context) error {
 
 	// IF podIds is empty it returns all!
 	// SELECT * FROM divvy_pods WHERE id IN (1,2,3);
-	result = DB.Preload("LifecycleType").Preload("PayoutType").Preload("Collaborators").Where(podIds).Find(&pods)
+	result = DB.Preload("LifecycleType").Preload("PayoutType").Preload("Collaborators").Preload("Collaborators.User.Avatar").Where(podIds).Find(&pods)
 	if result.Error != nil {
 		return AbstractError(c, "Something went wrong")
 	}

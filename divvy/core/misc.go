@@ -141,14 +141,29 @@ func BuildUserFromCollaborator(collaborator Collaborator) CollaboratorAPI {
 func BuildPod(pod Pod) PodAPI {
 	collaborators := pod.Collaborators
 	memberCount := len(collaborators)
+	var memberAvatars [][]uint
+
+	for _, c := range collaborators {
+		av := AvatarToArray(c.User.Avatar)
+		memberAvatars = append(memberAvatars, av)
+	}
+
+	// add total earned and pending from stripe...
+	totalPending, totalEarned := Direct_GetPodEarningsAndPendingTotal(pod.Selector)
+
+	// totalPending := Direct_GetPodPendingTotal(pod.Selector)
+
 	return PodAPI{
 		Name:          pod.Name,
 		Description:   pod.Description,
 		Selector:      pod.Selector,
 		MemberCount:   memberCount,
+		MemberAvatars: memberAvatars,
 		PayoutType:    pod.PayoutType,
 		LifecycleType: pod.LifecycleType,
 		ToDelete:      pod.ToDelete,
+		TotalEarned:   totalEarned,
+		TotalPending:  totalPending,
 	}
 }
 

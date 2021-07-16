@@ -44,13 +44,13 @@ func insertStaticRecords() {
 	DB.Create(&ut)
 
 	DB.Exec(`TRUNCATE TABLE pod_payout_types`)
-	pt := PodPayoutType{Name: "Even Split", ID: POD_PAYOUT_EVEN_SPLIT, Description: "All members split sales evenly."}
+	pt := PodPayoutType{Name: "Even Split", ID: POD_PAYOUT_EVEN_SPLIT, Description: "All members split balance evenly."}
 	DB.Create(&pt)
-	pt = PodPayoutType{Name: "Admins get 25%", ID: POD_PAYOUT_ADMIN25, Description: "Admin members split 25%, others split the rest."}
+	pt = PodPayoutType{Name: "Admins get 25%", ID: POD_PAYOUT_ADMIN25, Description: "Balance is split up by member role. 25% to admins, 75% to all other members."}
 	DB.Create(&pt)
-	pt = PodPayoutType{Name: "Admins get 50%", ID: POD_PAYOUT_ADMIN50, Description: "Admin members split 50%, others split the rest."}
+	pt = PodPayoutType{Name: "Admins get 50%", ID: POD_PAYOUT_ADMIN50, Description: "Balance is split up by member role. 50% to admins, 50% to all other members."}
 	DB.Create(&pt)
-	pt = PodPayoutType{Name: "Admins get 75%", ID: POD_PAYOUT_ADMIN75, Description: "Admin members split 75%, others split the rest."}
+	pt = PodPayoutType{Name: "Admins get 75%", ID: POD_PAYOUT_ADMIN75, Description: "Balance is split up by member role. 75% to admins, 25% to all other members."}
 	DB.Create(&pt)
 
 	DB.Exec(`TRUNCATE TABLE pod_lifecycle_types`)

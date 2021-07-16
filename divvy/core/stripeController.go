@@ -1632,6 +1632,80 @@ func Direct_GetPodUnavailableCharges(podSelector string) []ChargeListItem {
 	return charges
 }
 
+func Direct_GetPodPendingTotal(podSelector string) int {
+	// get from params
+	stripe.Key = getStripeKey()
+
+	// 30 days
+	createdSinceDaysGo := time.Now().AddDate(0, 0, -30).Unix()
+
+	params := &stripe.ChargeListParams{
+		TransferGroup: stripe.String(podSelector),
+		CreatedRange: &stripe.RangeQueryParams{
+			GreaterThan: createdSinceDaysGo,
+		},
+	}
+
+	pendingTotal := int64(0)
+	i := charge.List(params)
+
+	for i.Next() {
+		c := i.Charge()
+		if c.Refunded {
+			continue
+		}
+
+		if _, ok := c.Metadata["transfers_complete"]; ok {
+			//this charge was transfered! skip it
+			continue
+		}
+
+		pendingTotal += c.Amount
+	}
+
+	return int(pendingTotal)
+}
+
+func Direct_GetPodEarningsAndPendingTotal(podSelector string) (int, int) {
+	// get from params
+
+	stripe.Key = getStripeKey()
+
+	params := &stripe.ChargeListParams{
+		TransferGroup: stripe.String(podSelector),
+	}
+
+	pendingTotal := int64(0)
+	earningsTotal := int64(0)
+
+	i := charge.List(params)
+
+	for i.Next() {
+		c := i.Charge()
+		if c.Refunded {
+			continue
+		}
+
+		earningsTotal += c.Amount
+
+		if _, ok := c.Metadata["transfers_complete"]; ok {
+			continue
+		}
+
+		// transferAmount := c.Amount
+
+		// if _, ok := c.Metadata["transfer_amount"]; ok {
+		// 	transferAmount = c.Metadata["transfer_amount"]
+		// }
+
+		// pendingTotal += transferAmount
+
+		pendingTotal += c.Amount
+	}
+
+	return int(pendingTotal), int(earningsTotal)
+}
+
 func GetPodPayoutList(c echo.Context) error {
 
 	// get from params

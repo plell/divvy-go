@@ -208,6 +208,9 @@ type PodAPI struct {
 	PayoutTypeId    uint             `json:"payoutTypeId"`
 	LifecycleTypeId uint             `json:"lifecycleTypeId"`
 	MemberCount     int              `json:"memberCount"`
+	MemberAvatars   [][]uint         `json:"memberAvatars"`
+	TotalEarned     int              `json:"totalEarned"`
+	TotalPending    int              `json:"totalPending"`
 	PayoutType      PodPayoutType    `json:"payoutType"`
 	LifecycleType   PodLifecycleType `json:"lifecycleType"`
 }
