@@ -231,6 +231,11 @@ func GoogleLoginOrSignUp(c echo.Context) error {
 		if result.Error != nil {
 			return c.String(http.StatusInternalServerError, "Couldn't find newly created user")
 		}
+
+		errString := Direct_CreateStripeAccountForUser(user)
+		if errString != "" {
+			return AbstractError(c, errString)
+		}
 	} else {
 		// if user was created as a customer, now using the app, we need to require a betakey
 		// ************* TEMPORARY BETA REQUIREMENT START
@@ -401,6 +406,11 @@ func CustomerGoogleLoginOrSignUp(c echo.Context) error {
 		result := DB.First(&user, user_id)
 		if result.Error != nil {
 			return c.String(http.StatusInternalServerError, "Couldn't find newly created user")
+		}
+
+		errString := Direct_CreateStripeAccountForUser(user)
+		if errString != "" {
+			return AbstractError(c, errString)
 		}
 	}
 

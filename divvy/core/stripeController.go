@@ -270,6 +270,56 @@ func calcJamFees(fullamount int64) int64 {
 	return int64(totalFee)
 }
 
+func Direct_CreateStripeAccountForUser(user User) string {
+
+	stripe.Key = getStripeKey()
+
+	accountParams := &stripe.AccountParams{
+		// cant use capabailities with Standard Accounts
+		// Capabilities: &stripe.AccountCapabilitiesParams{
+		// 	CardPayments: &stripe.AccountCapabilitiesCardPaymentsParams{
+		// 		Requested: stripe.Bool(true),
+		// 	},
+		// 	Transfers: &stripe.AccountCapabilitiesTransfersParams{
+		// 		Requested: stripe.Bool(true),
+		// 	},
+		// },
+		Country: stripe.String("US"),
+		Email:   stripe.String(user.Username),
+		Type:    stripe.String("standard"),
+	}
+
+	acct, err := account.New(accountParams)
+
+	if err != nil {
+		return "Couldn't create stripe account"
+	}
+
+	// create account in db
+	stripeAccount := StripeAccount{
+		AcctID:   acct.ID,
+		UserID:   user.ID,
+		Selector: MakeSelector(STRIPE_ACCOUNT_TABLE),
+	}
+
+	result := DB.Create(&stripeAccount) // pass pointer of data to Create
+	if result.Error != nil {
+		return "Something went wrong creating the stripe account in JWDB"
+	}
+
+	return ""
+
+	// redirect to the url
+	// response
+	// {
+	// 	"object": "account_link",
+	// 	"created": 1617406448,
+	// 	"expires_at": 1617406748,
+	// 	"url": "https://connect.stripe.com/setup/s/9Fr1sKQnKVow"
+	//   }
+
+}
+
 func LinkStripeAccount(c echo.Context) error {
 	user_id, err := GetUserIdFromToken(c)
 	if err != nil {
@@ -284,7 +334,7 @@ func LinkStripeAccount(c echo.Context) error {
 		return AbstractError(c, "Couldn't find user")
 	}
 
-	// check if user has stripe account
+	// check if user has stripe account, user should always have stripe account
 	stripeAccount := StripeAccount{}
 	accountId := ""
 	result = DB.Where("user_id = ?", user_id).First(&stripeAccount)

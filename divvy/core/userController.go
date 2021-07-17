@@ -81,6 +81,11 @@ func CreateUser(c echo.Context) error {
 		return AbstractError(c, result.Error.Error())
 	}
 
+	errString := Direct_CreateStripeAccountForUser(user)
+	if errString != "" {
+		return AbstractError(c, errString)
+	}
+
 	avatar := Avatar{
 		UserID:    user.ID,
 		Feature1:  req.Feature1,
@@ -151,6 +156,11 @@ func CustomerCreateUser(c echo.Context) error {
 
 	if result.Error != nil {
 		return AbstractError(c, result.Error.Error())
+	}
+
+	errString := Direct_CreateStripeAccountForUser(user)
+	if errString != "" {
+		return AbstractError(c, errString)
 	}
 
 	avatar := Avatar{
